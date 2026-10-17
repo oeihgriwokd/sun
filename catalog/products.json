@@ -1,0 +1,28 @@
+{
+  "site": {
+    "name": "Aussie USBs",
+    "baseUrl": ""
+  },
+  "products": [
+    {
+      "id": "ubuntu-linux-usb",
+      "title": "Ubuntu Linux Latest Version Bootable USB Flash Drive Fast Installer Recovery Fix",
+      "price": 29.99,
+      "currency": "AUD",
+      "condition": "Brand new",
+      "ebayUrl": "https://www.ebay.com.au/itm/800016537860",
+      "images": [
+        "https://i.ebayimg.com/images/g/3WwAAeSwwgFqBUJb/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/p94AAeSwmKFqJOHs/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/I2UAAeSwtppqBUJs/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/Lm4AAeSwhkpqBUJt/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/frAAAeSwiwRqBUJx/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/TfcAAeSweUpqBUJy/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/t1gAAeSwPN5qBUJ0/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/SjoAAeSwi69qBUJ4/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/64UAAeSwrclqBUJ7/s-l500.jpg",
+        "https://i.ebayimg.com/images/g/N5EAAeSweeRqPz8f/s-l500.jpg"
+      ]
+    }
+  ]
+}
