@@ -2,7 +2,7 @@
 """Builds one static HTML page per product: python3 build.py
 Reads catalog/products.json + template/product.html, writes dist/. Python 3 standard library only.
 Stops with a list of problems (and writes nothing) if any product is invalid."""
-import html, json, re, shutil, sys
+import hashlib, html, json, re, shutil, sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 PREFIX = {"AUD": "AU $"}
 errors = []
+ASSET_V = ""  # changes whenever the CSS or JS changes, so browsers never keep stale copies
 
 def fmt_price(amount, currency):
     return f"{PREFIX.get(currency, currency + ' ')}{amount:.2f}"
@@ -114,9 +115,11 @@ STORE = "https://www.ebay.com.au/str/aussieusbs"
 FEATURED = ["800016537860", "800016421272", "800016323704", "800034663198", "800016354792", "800016005122", "800016404515", "800016475643", "800140680095", "800141757027", "800141827441", "800062044539"]
 
 def header():
+    nav = "".join(f'<a href="category-{s}.html">{esc(n)}</a>' for s, n in [("linux", "Linux"), ("tools", "Tools"), ("apps", "Software"), ("sandisk", "SD cards"), ("installers", "Installers")])
     return ('<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html">Aussie USBs</a>'
-            '<nav aria-label="Main"><a href="index.html#browse">Categories</a><a href="guides.html">Guides</a>'
-            f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">eBay store</a></nav></div></header>')
+            '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
+            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a>'
+            f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">eBay store</a></nav></header>')
 
 def footer():
     return ('<footer class="site-footer"><p>Aussie USBs sells on eBay Australia. You complete every purchase on eBay.</p>'
@@ -131,7 +134,7 @@ def page(site, title, desc, name, body, extra="", og_image=""):
     return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
-            + f'\n<link rel="stylesheet" href="assets/product.css">\n</head>\n<body>\n{header()}\n<main class="product prose">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
+            + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body>\n{header()}\n<main class="product prose">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
 
 def cards(items, pages):
     out = []
@@ -187,7 +190,7 @@ def render(template, p, site, ctx):
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
         "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if p.get("variations") else "Opens the eBay listing in a new tab, where you complete your purchase.",
-        "DATA_JSON": data_json,
+        "DATA_JSON": data_json, "ASSET_V": ASSET_V,
     }
     return re.sub(r"\{\{(\w+)\}\}", lambda m: vals[m.group(1)], template2)
 
@@ -276,6 +279,8 @@ def main():
     template = (ROOT / "template" / "product.html").read_text(encoding="utf-8")
     if DIST.exists(): shutil.rmtree(DIST)
     DIST.mkdir(); shutil.copytree(ROOT / "assets", DIST / "assets")
+    global ASSET_V
+    ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js"))).hexdigest()[:8]
     products = [normalise(p) for p in products]
     by_id = {p["id"]: p for p in products}
     by_cat = {c[0]: sorted([p["id"] for p in products if category_of(p) == c[0]], key=lambda i: by_id[i]["title"].lower()) for c in CATS}
@@ -285,6 +290,14 @@ def main():
     names = []
     for p in products:
         (DIST / f"{p['id']}.html").write_text(render(template, p, site, ctx), encoding="utf-8")
+    shop_script = "<script>(function(){var i=document.getElementById('q'),items=[].slice.call(document.querySelectorAll('.card-grid li')),n=document.getElementById('count');function f(){var t=i.value.toLowerCase().trim(),c=0;items.forEach(function(li){var ok=li.textContent.toLowerCase().indexOf(t)>-1;li.hidden=!ok;if(ok)c++});n.textContent=c+' of '+items.length+' products'}var m=/[?&]q=([^&]*)/.exec(location.search);if(m){i.value=decodeURIComponent(m[1].replace(/\\+/g,' '))}i.addEventListener('input',f);f()})();</script>"
+    allp = sorted(products, key=lambda p: p["title"].lower())
+    shop_body = (f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; All products</nav><h1>All products</h1>'
+                 f'<p>Search all {len(products)} bootable USB drives, SD cards and installers. Every purchase is completed on eBay.</p>'
+                 f'<label class="visually-hidden" for="q">Filter products</label><input id="q" class="shop-filter" type="search" placeholder="Type to filter, e.g. ubuntu, mint, raspberry">'
+                 f'<p id="count" class="crumbs" role="status"></p>{cards(allp, ctx)}{shop_script}')
+    (DIST / "shop.html").write_text(page(site, f"All products ({len(products)}) | {site['name']}", trim(f"Browse and search all {len(products)} bootable USB drives, SD cards and software installers from {site['name']} on eBay Australia.", 158), "shop.html", shop_body), encoding="utf-8")
+    names.append("shop.html")
     # category pages
     for slug_, name, _, intro in CATS:
         items = [by_id[i] for i in by_cat[slug_]]
@@ -310,7 +323,7 @@ def main():
     cat_cards = "".join(f'<li><a class="card" href="category-{s}.html"><strong>{esc(n)}</strong><span>{len(by_cat[s])} listing{"s" if len(by_cat[s]) != 1 else ""}</span></a></li>' for s, n, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s])
     feat = [by_item[i] for i in FEATURED if i in by_item]
     body = (f'<h1>Bootable USB drives and software installers</h1><p>{esc(site["name"])} sells bootable USB drives, SD cards and software installers on eBay Australia, including Ubuntu, Linux Mint, Debian and Zorin OS. '
-            f'Browse {len(products)} listings, then complete your purchase on eBay.</p><h2 id="browse">Browse by category</h2><ul class="card-grid">{cat_cards}</ul>'
+            f'Browse {len(products)} listings, then complete your purchase on eBay.</p><h2 id="browse">Browse by category</h2><ul class="card-grid">{cat_cards}</ul><p><a href="shop.html">See all {len(products)} products</a></p>'
             f'<h2>Popular picks</h2>{cards(feat, ctx)}<h2>Guides</h2><ul class="card-grid">{gl}</ul>')
     org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": (base + "/") if base else "", "sameAs": [STORE]})
     (DIST / "index.html").write_text(page(site, f"{site['name']} | Bootable USB Drives & Installers: Ubuntu, Linux Mint, Debian", trim(f"Browse {len(products)} bootable USB drives, SD cards and installers, including Ubuntu, Linux Mint, Debian and Zorin OS. Sold by {site['name']} on eBay Australia.", 158), "index.html", body, org), encoding="utf-8")
