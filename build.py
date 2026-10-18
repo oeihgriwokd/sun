@@ -110,8 +110,13 @@ def read_imported(path, curated):
     if not path.exists(): return []
     imported = json.loads(path.read_text(encoding="utf-8"))
     by_item = {item_of(p): p for p in curated if item_of(p)}
+    photos = {}
+    if (path.parent / "images.json").exists():  # item number -> eBay picture id (from the Seller Hub pages)
+        photos = json.loads((path.parent / "images.json").read_text(encoding="utf-8"))
     extra = []
     for q in imported:
+        if item_of(q) in photos and not q.get("images"):
+            q["images"] = [f"https://i.ebayimg.com/images/g/{photos[item_of(q)]}/s-l500.jpg"]
         c = by_item.get(item_of(q))
         if c is None: extra.append(q)
         elif q.get("variations") and not c.get("variations"):

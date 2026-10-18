@@ -21,6 +21,12 @@
   }
   function announce(message) { $("status").textContent = message; }
 
+  /* A first image that fails to load shows the message instead of a broken icon */
+  (function () {
+    var first = $("mainImage"), msg = $("imageError");
+    if (first && msg) { first.addEventListener("error", function () { first.hidden = true; msg.hidden = false; }); }
+  })();
+
   /* ---------- Gallery ---------- */
   var images = (data.images || []).filter(function (img) { return img && /^https:\/\//.test(img.src); });
   var total = images.length;
