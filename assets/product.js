@@ -58,7 +58,7 @@
   }
 
   if (total === 0) {
-    $("gallery").hidden = true;
+    if ($("gallery")) { $("gallery").hidden = true; }
   } else {
     images.forEach(function (item, i) {
       var b = document.createElement("button");
@@ -123,7 +123,8 @@
 
   var attrs = data.variationAttributes || [], variations = data.variations || [];
   if (attrs.length && variations.length) {
-    var start = variations.filter(function (v) { return v.available !== false; })[0] || variations[0];
+    var start = variations.filter(function (v) { return v.available !== false && typeof v.price === "number"; })
+      .reduce(function (best, v) { return !best || v.price > best.price ? v : best; }, null) || variations[0];
     var selection = Object.assign({}, start.options);
     var holder = $("variations");
 

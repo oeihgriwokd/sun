@@ -85,3 +85,10 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* Catalogue index */
+.catalog-list { list-style: none; margin: 0; padding: 0; }
+.catalog-list li { border-bottom: 1px solid var(--border); }
+.catalog-list a { display: flex; justify-content: space-between; gap: var(--space-2); min-height: var(--control); padding: var(--space-2) 0; color: var(--text); text-decoration: none; }
+.catalog-list a:hover { color: var(--accent-hover); }
+.catalog-list .catalog-price { flex: 0 0 auto; font-weight: bold; }

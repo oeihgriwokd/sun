@@ -34,9 +34,9 @@ def validate(p, index, seen):
     seen.add(pid)
     if not isinstance(p.get("title"), str) or not p["title"].strip(): bad("missing 'title'")
     if not re.fullmatch(r"[A-Z]{3}", str(p.get("currency", ""))): bad("'currency' must be a 3-letter code such as AUD")
-    imgs = p.get("images")
-    if not isinstance(imgs, list) or not imgs:
-        bad("'images' needs at least one image")
+    imgs = p.get("images", [])
+    if not isinstance(imgs, list):
+        bad("'images' must be a list")
     else:
         for i, img in enumerate(imgs):
             src = img.get("src") if isinstance(img, dict) else img
@@ -65,14 +65,15 @@ def validate(p, index, seen):
 
 def normalise(p):
     p = dict(p)
-    p["images"] = [{"src": i, "alt": ""} if isinstance(i, str) else {"src": i["src"], "alt": i.get("alt", "")} for i in p["images"]]
+    p["images"] = [{"src": i, "alt": ""} if isinstance(i, str) else {"src": i["src"], "alt": i.get("alt", "")} for i in p.get("images", [])]
     return p
 
 def render(template, p, site):
     esc = lambda s: html.escape(str(s), quote=True)
     start = {"price": p.get("price"), "ebayUrl": p.get("ebayUrl")}
     if p.get("variations"):
-        v = next((v for v in p["variations"] if v.get("available", True) is not False), p["variations"][0])
+        ok = [v for v in p["variations"] if v.get("available", True) is not False and is_price(v.get("price"))]
+        v = max(ok, key=lambda v: v["price"]) if ok else p["variations"][0]
         start = {"price": v.get("price"), "ebayUrl": v.get("ebayUrl")}
     price = fmt_price(start["price"], p["currency"]) if is_price(start["price"]) else "Not available"
     if p.get("pricePrefix") and is_price(start["price"]):  # optional wording such as "Up to"
@@ -84,19 +85,79 @@ def render(template, p, site):
         "PAGE_TITLE": esc(f"{p['title']} | {site['name']}"),
         "DESCRIPTION": esc(desc),
         "CANONICAL": f'<link rel="canonical" href="{esc(base + "/" + p["id"] + ".html")}">' if base else "",
-        "FIRST_IMAGE": esc(p["images"][0]["src"]),
-        "FIRST_ALT": esc(p["images"][0]["alt"] or f"{p['title']}, image 1 of {len(p['images'])}"),
+        "FIRST_IMAGE": esc(p["images"][0]["src"]) if p["images"] else "",
+        "FIRST_ALT": esc(p["images"][0]["alt"] or f"{p['title']}, image 1 of {len(p['images'])}") if p["images"] else "",
         "TITLE": esc(p["title"]),
         "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price),
         "EBAY_URL": esc(start["ebayUrl"] or "#"),
+        "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if p.get("variations") else "Opens the eBay listing in a new tab, where you complete your purchase.",
         "DATA_JSON": data_json,
     }
+    if not p["images"]:  # no photos yet: leave the gallery out of the page
+        template = re.sub(r"<!--GALLERY-->.*?<!--/GALLERY-->\n?", "", template, flags=re.S)
     return re.sub(r"\{\{(\w+)\}\}", lambda m: vals[m.group(1)], template)
+
+def slug(text):
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+def item_of(p):
+    m = re.search(r"/itm/(\d+)", str(p.get("ebayUrl", "")))
+    return m.group(1) if m else None
+
+def read_imported(path, curated):
+    """catalog/imported.json (made by import_csv.py). Curated entries in products.json win; they only borrow options/prices."""
+    if not path.exists(): return []
+    imported = json.loads(path.read_text(encoding="utf-8"))
+    by_item = {item_of(p): p for p in curated if item_of(p)}
+    extra = []
+    for q in imported:
+        c = by_item.get(item_of(q))
+        if c is None: extra.append(q)
+        elif q.get("variations") and not c.get("variations"):
+            c["variationAttributes"], c["variations"] = q["variationAttributes"], q["variations"]
+            c.pop("price", None); c.pop("pricePrefix", None); c.pop("ebayUrl", None)
+    return extra
+
+def write_extras(products, site):
+    esc = lambda s: html.escape(str(s), quote=True)
+    base = (site.get("baseUrl") or "").rstrip("/")
+    rows = []
+    for p in sorted(products, key=lambda p: p["title"].lower()):
+        prices = [v["price"] for v in p.get("variations", []) if is_price(v.get("price"))] or ([p["price"]] if is_price(p.get("price")) else [])
+        pr = fmt_price(max(prices), p["currency"]) if prices else ""
+        if pr and (p.get("pricePrefix") or (len(prices) > 1 and min(prices) < max(prices))): pr = f"Up to {pr}"
+        rows.append(f'<li><a href="{esc(p["id"])}.html"><span>{esc(p["title"])}</span><span class="catalog-price">{esc(pr)}</span></a></li>')
+    page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{esc(site['name'])} | Bootable USB drives and installers</title>
+<meta name="description" content="Bootable USB drives, installers and tools from {esc(site['name'])}. Each item is bought on eBay.">
+{f'<link rel="canonical" href="{esc(base)}/">' if base else ''}
+<link rel="stylesheet" href="assets/product.css">
+</head>
+<body>
+<main class="product">
+<h1>{esc(site['name'])}</h1>
+<ul class="catalog-list">
+{chr(10).join(rows)}
+</ul>
+</main>
+</body>
+</html>
+"""
+    (DIST / "index.html").write_text(page, encoding="utf-8")
+    if base:
+        urls = [base + "/"] + [f"{base}/{p['id']}.html" for p in products]
+        (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "\n".join(f"<url><loc>{esc(u)}</loc></url>" for u in urls) + "\n</urlset>\n", encoding="utf-8")
+        (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
 
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
     site, products = catalog.get("site", {"name": "Aussie USBs"}), catalog.get("products", [])
+    products = products + read_imported(ROOT / "catalog" / "imported.json", products)
     seen = set()
     for i, p in enumerate(products): validate(p, i, seen)
     if errors:
@@ -110,7 +171,8 @@ def main():
     for p in products:
         p = normalise(p)
         (DIST / f"{p['id']}.html").write_text(render(template, p, site), encoding="utf-8")
-    print(f"Built {len(products)} page(s) into {DIST}")
+    write_extras([normalise(p) for p in products], site)
+    print(f"Built {len(products)} page(s) plus index, sitemap and robots into {DIST}")
 
 if __name__ == "__main__":
     main()

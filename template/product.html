@@ -11,6 +11,7 @@
 <body>
 <main class="product">
 
+  <!--GALLERY-->
   <section class="gallery" id="gallery" aria-label="Product images">
     <div class="gallery-stage">
       <div class="main-image-wrap">
@@ -29,6 +30,7 @@
     </div>
     <div class="thumbnails" id="thumbnails" role="group" aria-label="Choose a product image" hidden></div>
   </section>
+  <!--/GALLERY-->
 
   <h1>{{TITLE}}</h1>
   {{CONDITION_HTML}}
@@ -36,7 +38,7 @@
   <div id="variations"></div>
 
   <a class="buy-button" id="buyButton" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">Buy on eBay</a>
-  <p class="buy-note">Opens the eBay listing in a new tab, where you complete your purchase.</p>
+  <p class="buy-note">{{BUY_NOTE}}</p>
   <p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
 
 </main>
