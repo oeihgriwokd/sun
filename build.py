@@ -102,7 +102,7 @@ CATS = [
     ("retro", "Retro gaming and media centres", r"batocera|retro ?pie|lakka|libreelec|osmc|volumio", "Bootable systems for retro gaming, home theatre and music streaming."),
     ("bsd", "BSD, DOS and other operating systems", r"bsd|freedos|haiku|dragonfly", "Bootable USB drives for BSD, DOS and other alternative operating systems."),
     ("tools", "Disk, rescue and security tools", r"gparted|clonezilla|dban|rescatux|testdisk|memtest|system ?rescue|ultimate boot|nmap|wireshark|shredos|undelete|redo ?rescue|ventoy|bleachbit|glary|mcleaner|wifislax|backbox|ipfire|truenas|proxmox|httrack|linuxcnc|test tones|rescue", "Tools for disk cloning, partitioning, data recovery, network and security work."),
-    ("apps", "Free software and creative apps", r"portable|audacity|vlc|gimp|inkscape|kdenlive|shotcut|openshot|blender|lmms|musescore|libreoffice|openoffice|scribus|pencil2d|handbrake|mixxx|losslesscut|kicad|7-zip|winmerge|firefox|eclipse|vscodium|posterazor|gramps|lazpaint|stepmania|zint|ispy|espeak|dvd creater|turbocash|wine|construct classic|rosegarden", "Free and open-source software on a USB drive, for office, design, audio, video and more."),
+    ("apps", "Software and creative apps", r"portable|audacity|vlc|gimp|inkscape|kdenlive|shotcut|openshot|blender|lmms|musescore|libreoffice|openoffice|scribus|pencil2d|handbrake|mixxx|losslesscut|kicad|7-zip|winmerge|firefox|eclipse|vscodium|posterazor|gramps|lazpaint|stepmania|zint|ispy|espeak|dvd creater|turbocash|wine|construct classic|rosegarden", "Portable software on a USB drive, for office, design, audio, video and more."),
     ("linux", "Linux distributions", r"", "Bootable USB drives for Linux distributions, from beginner-friendly desktops to rescue and server systems."),
 ]
 CAT = {c[0]: c for c in CATS}
@@ -117,19 +117,25 @@ DISPLAY = ["linux", "tools", "apps", "sandisk", "installers", "retro", "android"
 STORE = "https://www.ebay.com.au/str/aussieusbs"
 FEATURED = ["800016537860", "800016421272", "800016323704", "800034663198", "800016354792", "800016005122", "800016404515", "800016475643", "800140680095", "800141757027", "800141827441", "800062044539"]
 
+LANGS = [("es", "Español"), ("fr", "Français"), ("de", "Deutsch"), ("pt", "Português"), ("it", "Italiano"), ("nl", "Nederlands"), ("pl", "Polski"), ("tr", "Türkçe"), ("ru", "Русский"), ("ar", "العربية"), ("hi", "हिन्दी"), ("id", "Bahasa Indonesia"), ("vi", "Tiếng Việt"), ("zh-CN", "简体中文"), ("ja", "日本語"), ("ko", "한국어")]
+
 def header():
     nav = "".join(f'<a href="category-{s}.html">{esc(n)}</a>' for s, n in [("linux", "Linux"), ("tools", "Tools"), ("apps", "Software"), ("sandisk", "SD cards"), ("installers", "Installers")])
-    return ('<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html">linuxonusb<span>.com</span></a>'
+    opts = '<option value="">Language</option>' + "".join(f'<option value="{c}">{n}</option>' for c, n in LANGS)
+    return ('<a class="skip" href="#main">Skip to main content</a>'
+            '<div class="utility"><div class="utility__inner"><span>Sold on eBay Australia &middot; prices in AUD</span><span class="utility__right"><a href="guides.html">Guides</a>'
+            f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a><label class="visually-hidden" for="lang">Translate this page</label><select id="lang" class="lang">{opts}</select></span></div></div>'
+            '<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html" aria-label="Linuxonusb.com home">linuxonusb<span>.com</span></a>'
             '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
-            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a>'
-            f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">eBay store</a></nav></header>')
+            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a></nav></header>')
 
 def footer():
     cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
     gl = "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in [("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")])
-    return ('<footer class="site-footer"><div class="site-footer__cols"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li></ul></div>'
+    return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li></ul></div>'
             '<div><strong>Linuxonusb.com</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay Australia. You complete every purchase on eBay.</p>'
-            f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p></div></div></footer>')
+            f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p><p>Machine translation is provided by Google Translate through the language menu at the top of the page.</p></div></nav>'
+            '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
     base = (site.get("baseUrl") or "").rstrip("/")
@@ -143,7 +149,7 @@ def page(site, title, desc, name, body, extra="", og_image="", main_class="produ
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n<meta name="robots" content="index,follow,max-image-preview:large">\n<meta name="theme-color" content="#335FFF">\n'
             '<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
-            + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
+            + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main id="main" tabindex="-1" class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
 
 def crumb_ld(site, items):
     base = (site.get("baseUrl") or "").rstrip("/")
@@ -195,7 +201,7 @@ def assign_ids(products, keep):
 ABOUT = {
     "linux": "{n} is a Linux operating system supplied on a bootable USB drive. Plug it into a computer that can start from USB, restart, and pick the USB drive from the boot menu. Many Linux systems let you try them in live mode before you install anything.",
     "tools": "{n} is a tool you run by starting your computer from the USB drive instead of its own disk. See the eBay listing for exactly what is included.",
-    "apps": "{n} is free software supplied on a USB drive. See the eBay listing for exactly what is included and which systems it supports.",
+    "apps": "{n} is software supplied on a USB drive. See the eBay listing for exactly what is included and which systems it supports.",
     "sandisk": "{n} is a memory card prepared with a bootable system, for devices that can start from an SD or microSD card, such as the Raspberry Pi. Check that your device supports it before you buy.",
     "installers": "{n} is a USB drive that carries an installer. See the eBay listing for the systems it supports and what is included.",
     "bundles": "{n} puts several systems or tools on one USB drive. See the eBay listing for exactly what is included.",
@@ -314,6 +320,10 @@ def render(template, p, site, ctx):
     sections = [f'<section class="details"><h2>About {esc(name)}</h2><p>{esc(about)}</p></section>']
     if cat[0] in BOOTS:
         sections.append('<section class="details"><h2>How it works</h2><ol><li>Plug the drive into your computer and restart it.</li><li>Open the boot menu (often Esc, F2, F10, F12 or Del) and choose the USB drive.</li><li>Follow the on-screen steps to try or install it. <a href="guide-how-to-boot-from-usb.html">Read the full boot guide</a>.</li></ol></section>')
+    if cat[0] in BOOTS:
+        sections.insert(1, '<section class="details"><h2>Before you buy</h2><ul class="checks"><li>Your computer can start from a USB drive or card (most PCs from the last decade can).</li><li>You have backed up anything important.</li><li>You know your computer\'s boot menu key. <a href="guide-boot-menu-keys-by-brand.html">See keys by brand</a>.</li><li>Questions? Message the seller on eBay before you buy.</li></ul></section>')
+    if not p.get("variations") and is_ebay(p.get("ebayUrl")):
+        sections.insert(1, f'<p class="inline-cta"><a class="btn" href="{esc(p["ebayUrl"])}" target="_blank" rel="noopener noreferrer">Buy on eBay</a></p>')
     if p.get("variations"):
         items = []
         for v in p["variations"]:
@@ -322,7 +332,7 @@ def render(template, p, site, ctx):
         sections.append(f'<section class="details"><h2>Options and prices</h2><p>{nopt} options available. Choose your option on eBay when you buy.</p><ul class="price-list">{"".join(items)}</ul></section>')
     sections.append('<section class="details"><h2>Frequently asked questions</h2>' + "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs) + "</section>")
     sections.append(f'<section class="details"><h2>Listing details</h2><p>eBay listing title: {esc(p["title"])}</p>{"<p>Condition: " + esc(p["condition"]) + "</p>" if p.get("condition") else ""}<p>Sold by {esc(site["name"])} on eBay Australia.</p></section>')
-    gl_items = [("how-to-boot-from-usb", "How to boot from a USB drive"), ("how-to-install-linux-from-usb", "How to install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys by brand")] if cat[0] in BOOTS else [("what-is-a-bootable-usb-drive", "What is a bootable USB drive?"), ("is-linux-free-and-safe", "Is Linux free and safe?")]
+    gl_items = [("how-to-boot-from-usb", "How to boot from a USB drive"), ("how-to-install-linux-from-usb", "How to install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys by brand")] if cat[0] in BOOTS else [("what-is-a-bootable-usb-drive", "What is a bootable USB drive?"), ("is-linux-safe-to-use", "Is Linux safe to use?")]
     sections.append('<section class="details"><h2>Helpful guides</h2><ul>' + "".join(f'<li><a href="guide-{a_}.html">{b_}</a></li>' for a_, b_ in gl_items) + '</ul></section>')
     mates = ctx["by_cat"][cat[0]]; i = mates.index(p["id"]); rel = [ctx["by_id"][mates[(i + k) % len(mates)]] for k in range(1, min(9, len(mates)))]
     related = f'<section class="related"><h2>More in {esc(cat[1])}</h2>{cards(rel, ctx)}</section>' if rel else ""
@@ -339,6 +349,7 @@ def render(template, p, site, ctx):
         "LAYOUT_CLASS": "" if p["images"] else " product-layout--single",
         "FIRST_IMAGE": esc(p["images"][0]["src"]) if p["images"] else "",
         "FIRST_ALT": esc(p["images"][0]["alt"] or f"{name}, image 1 of {len(p['images'])}") if p["images"] else "",
+        "SELLER": f'<div class="seller"><strong>Sold by {esc(site["name"])}</strong><span>Buyer protection, returns and delivery terms are handled by eBay and shown on the listing.</span><a href="{STORE}" target="_blank" rel="noopener noreferrer">Visit our eBay store</a></div>',
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
         "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if nopt else "Opens the eBay listing in a new tab, where you complete your purchase.",
@@ -496,7 +507,7 @@ def main():
                  ("Do I have to install Linux to try it?", "No. Most Linux systems have a live mode that runs from the USB drive without changing your computer's disk. You can install later if you like it."),
                  ("Will it work on my computer?", "It works on computers that can start from USB, which includes most PCs from the last decade or so. Check the eBay listing or message the seller if you are unsure."),
                  ("How do I buy?", "Choose a product here and press Buy on eBay. Checkout, payment and delivery are handled by eBay Australia."),
-                 ("Is Linux free?", "Linux itself is free. You are paying for a ready-made USB drive that saves you the downloading and preparing.")]
+                 ("Is it safe to try Linux?", "Yes. Live mode runs from the USB drive without changing your computer's disk. Back up important files before you install anything.")]
     faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs_home)
     faq_ld = jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs_home]})
     n_all = len(products)
@@ -504,9 +515,10 @@ def main():
     body = (f'<section class="banner"><div class="banner__text"><h1>Bootable USB drives for Linux, rescue tools and software</h1>'
             f'<p>Try or install Ubuntu, Linux Mint, Debian, Zorin OS and more. Plug in, restart and go. {n_all} listings, checkout on eBay Australia.</p>'
             f'<p><a class="btn" href="shop.html">Shop all products</a> <a class="btn btn--ghost" href="guides.html">Read the guides</a></p></div><div class="banner__imgs">{hero_imgs}</div></section>'
-            '<ul class="strip"><li>Sold on eBay Australia</li><li>Try in live mode before you install</li><li>Free setup guides</li></ul>'
+            '<ul class="strip"><li>Sold on eBay Australia</li><li>Try in live mode before you install</li><li>Setup guides included</li></ul>'
             f'<section class="home-section" id="browse"><h2>Shop by category</h2><ul class="circles">{circ}</ul></section>'
             f'<section class="home-section"><div class="sec-head"><h2>Popular picks</h2><a href="shop.html">See all {n_all}</a></div>{cards(feat, ctx)}</section>'
+            '<section class="home-section"><h2>Why buy from Linuxonusb.com</h2><ul class="why"><li><strong>Ready to use</strong><span>No downloading or preparing. Plug in, restart and go.</span></li><li><strong>A wide range</strong><span>Linux systems, rescue tools, SD cards and software, all in one place.</span></li><li><strong>Simple checkout</strong><span>Pay on eBay Australia, where delivery options and terms are clearly shown.</span></li></ul></section>'
             '<section class="home-section"><h2>Not sure where to start?</h2><ul class="quick"><li><a href="guide-best-linux-for-beginners.html">Best Linux for beginners</a></li><li><a href="guide-best-linux-for-old-laptops.html">Best Linux for old laptops</a></li>'
             '<li><a href="guide-ubuntu-vs-linux-mint.html">Ubuntu vs Linux Mint</a></li><li><a href="guide-linux-for-windows-10-end-of-support.html">Linux after Windows 10 support ended</a></li><li><a href="guide-best-linux-for-gaming.html">Best Linux for gaming</a></li><li><a href="guide-how-to-clone-a-disk-with-clonezilla.html">Clone a disk with Clonezilla</a></li></ul></section>'
             f'<section class="home-section"><div class="sec-head"><h2>Guides</h2><a href="guides.html">All {len(g)} guides</a></div><ul class="card-grid guide-grid">{gl_home}</ul></section>'

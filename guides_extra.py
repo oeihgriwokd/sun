@@ -57,7 +57,7 @@ def more(lk):
  "Windows 10 stopped getting free security updates in October 2025. Here is how Linux can keep a working computer in use.",
  """<p>Microsoft ended mainstream support for Windows 10 on 14 October 2025. Computers that cannot upgrade to Windows 11 are still able to run, but they no longer receive free security updates from Microsoft. Linux is one way to keep such a computer useful and supported.</p>
 <h2>Your options</h2>
-<ul><li>Upgrade to Windows 11 if your computer meets the requirements.</li><li>Pay for Microsoft's extended security updates, if eligible.</li><li>Move to a Linux system, which is free and keeps receiving updates.</li></ul>
+<ul><li>Upgrade to Windows 11 if your computer meets the requirements.</li><li>Pay for Microsoft's extended security updates, if eligible.</li><li>Move to a Linux system, which keeps receiving updates.</li></ul>
 <h2>Trying Linux without risk</h2>
 <ol><li>Back up your files.</li><li>Boot a Linux USB drive in live mode, which does not change your disk.</li><li>Check Wi-Fi, printing and the apps you use.</li><li>Install only when you are happy.</li></ol>
 <p>Easy picks for Windows users: {lk('800016421272','Linux Mint')} and {lk('800034663198','Zorin OS')}. For lighter systems see <a href="guide-best-linux-for-old-laptops.html">Linux for old laptops</a>. Some software, such as certain games and Adobe tools, may not run on Linux, so check your needs first.</p>"""),
@@ -89,7 +89,7 @@ def more(lk):
 <p>Related: <a href="guide-uefi-vs-legacy-bios-boot.html">UEFI vs Legacy BIOS</a> and <a href="guide-how-to-boot-from-usb.html">how to boot from USB</a>.</p>"""),
 ("how-to-clone-a-disk-with-clonezilla", "How to clone a disk with Clonezilla",
  "A beginner guide to cloning or backing up a disk with Clonezilla from a bootable USB drive.",
- """<p>Clonezilla is a free tool that copies a whole disk or partition to another disk or to an image file. Because it runs from a USB drive, it can copy a system that is not running.</p>
+ """<p>Clonezilla is a tool that copies a whole disk or partition to another disk or to an image file. Because it runs from a USB drive, it can copy a system that is not running.</p>
 <h2>Common uses</h2>
 <ul><li>Move to a bigger or faster drive.</li><li>Back up a full system before a big change.</li><li>Set up many computers from one image.</li></ul>
 <h2>Basic steps</h2>
@@ -115,7 +115,7 @@ def more(lk):
 <p>Not every game runs, especially some with anti-cheat. Check ProtonDB before buying a game. See also our <a href="category-installers.html">app and game installer USB drives</a>.</p>"""),
 ("what-is-ventoy", "What is Ventoy and why use it?",
  "Ventoy turns one USB drive into a multi-boot drive. Learn how it works and when it is useful.",
- """<p>Ventoy is a free tool that sets up a USB drive so you can boot many different system images from it. You copy ISO files to the drive like ordinary files, and Ventoy shows a menu at start-up.</p>
+ """<p>Ventoy is a tool that sets up a USB drive so you can boot many different system images from it. You copy ISO files to the drive like ordinary files, and Ventoy shows a menu at start-up.</p>
 <h2>Why people use it</h2>
 <ul><li>One drive holds several Linux systems and tools.</li><li>No need to rewrite the drive for each system.</li><li>Easy to add or remove images later.</li></ul>
 <h2>Limits</h2>
@@ -145,11 +145,11 @@ def more(lk):
 <h2>Important</h2>
 <ul><li>Wiping is permanent. Double-check the disk.</li><li>DBAN is designed for traditional hard drives. SSDs use different methods such as secure erase.</li></ul>
 <p>See our <a href="category-tools.html">disk, rescue and security tools</a>.</p>"""),
-("is-linux-free-and-safe", "Is Linux free and safe to use?",
- "Answers to common questions about Linux cost, safety, viruses and software for new users.",
- """<p>Most Linux distributions are free to download, use and share. When you buy a bootable USB drive, you are paying for the prepared drive and convenience, not for the software itself.</p>
-<h2>Is Linux safe?</h2>
-<ul><li>Linux is widely used on servers and phones, and security fixes arrive quickly.</li><li>Malware aimed at Linux desktops is less common than for Windows, but no system is immune.</li><li>Keep it updated and install software from official stores.</li></ul>
+("is-linux-safe-to-use", "Is Linux safe to use?",
+ "Answers to common questions about Linux safety, viruses, updates and software for new users.",
+ """<p>Linux is widely used on servers, phones and desktops, and security fixes arrive quickly through regular updates.</p>
+<h2>Staying safe</h2>
+<ul><li>Keep the system updated using the built-in updater.</li><li>Install software from the official software store.</li><li>Malware aimed at Linux desktops is less common than for Windows, but no system is immune.</li><li>Back up your files, whatever system you use.</li></ul>
 <h2>Can I run my usual programs?</h2>
 <ul><li>Web browsers, office tools, media players and many creative apps work well.</li><li>Some Windows-only programs do not run, so check first.</li></ul>
 <p>Try without commitment: see <a href="guide-live-usb-or-install.html">live USB or install</a> and <a href="guide-best-linux-for-beginners.html">best Linux for beginners</a>.</p>"""),

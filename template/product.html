@@ -13,7 +13,7 @@
 </head>
 <body class="has-buy-bar">
 {{HEADER}}
-<main class="product product--wide">
+<main id="main" tabindex="-1" class="product product--wide">
   {{BREADCRUMB}}
   <div class="product-layout{{LAYOUT_CLASS}}">
     <div class="product-media">
@@ -48,9 +48,10 @@
       <p class="buy-note">{{BUY_NOTE}}</p>
       <ul class="trust">
         <li>Checkout and payment on eBay Australia</li>
-        <li>Opens the live eBay listing in a new tab</li>
-        <li>Sold by Linuxonusb.com</li>
+        <li>Prices in Australian dollars (AUD)</li>
+        <li>Delivery options and destinations are shown on the eBay listing</li>
       </ul>
+      {{SELLER}}
       <p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
     </div>
   </div>
