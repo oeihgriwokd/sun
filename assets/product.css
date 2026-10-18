@@ -92,3 +92,32 @@ a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outlin
 .catalog-list a { display: flex; justify-content: space-between; gap: var(--space-2); min-height: var(--control); padding: var(--space-2) 0; color: var(--text); text-decoration: none; }
 .catalog-list a:hover { color: var(--accent-hover); }
 .catalog-list .catalog-price { flex: 0 0 auto; font-weight: bold; }
+
+/* Site pages: header, footer, cards, text */
+.site-header { border-bottom: 1px solid var(--border); }
+.site-header__inner { max-width: 850px; margin: 0 auto; padding: var(--space-2) var(--space-4); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.site-name { font-weight: bold; font-size: 20px; color: var(--text); text-decoration: none; }
+.site-header nav { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.site-header nav a, .site-footer a, .crumbs a, .prose a { color: var(--accent); }
+.site-header nav a { text-decoration: none; min-height: var(--control); display: inline-flex; align-items: center; }
+.site-footer { max-width: 850px; margin: var(--space-4) auto 0; padding: var(--space-4); border-top: 1px solid var(--border); font-size: 14px; color: var(--muted); }
+.site-footer p { margin: 0 0 var(--space-1); }
+.crumbs { font-size: 14px; color: var(--muted); margin: 0 0 var(--space-2); }
+.crumbs a { text-decoration: none; }
+.prose h1 { margin-top: 0; }
+.prose h2 { margin: 28px 0 var(--space-1); font-size: 22px; }
+.prose p, .prose li { line-height: 1.6; }
+.details, .related { margin-top: 32px; }
+.details h2, .related h2 { font-size: 20px; margin: 0 0 var(--space-2); }
+.details li { line-height: 1.6; }
+.card-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2); }
+.card { display: block; height: 100%; border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-2); color: var(--text); text-decoration: none; }
+.card:hover { border-color: var(--accent); }
+.card img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: var(--surface); border-radius: var(--radius-small); margin-bottom: var(--space-1); }
+.card strong { display: block; font-size: 15px; line-height: 1.35; }
+.card span { display: block; margin-top: 4px; color: var(--muted); font-size: 14px; }
+.card .card-price { color: var(--text); font-weight: bold; }
+
+.prose .card { color: var(--text); }
+.prose .card:hover { border-color: var(--accent); }
+.prose .card strong { color: var(--text); }

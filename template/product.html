@@ -6,11 +6,13 @@
 <title>{{PAGE_TITLE}}</title>
 <meta name="description" content="{{DESCRIPTION}}">
 {{CANONICAL}}
+{{HEAD_EXTRA}}
 <link rel="stylesheet" href="assets/product.css">
 </head>
 <body>
+{{HEADER}}
 <main class="product">
-
+  {{BREADCRUMB}}
   <!--GALLERY-->
   <section class="gallery" id="gallery" aria-label="Product images">
     <div class="gallery-stage">
@@ -41,7 +43,10 @@
   <p class="buy-note">{{BUY_NOTE}}</p>
   <p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
 
+  {{DETAILS}}
+  {{RELATED}}
 </main>
+{{FOOTER}}
 
 <dialog class="lightbox" id="lightbox" aria-label="Full-size product image">
   <img class="lightbox-image" id="lightboxImage" src="" alt="">
