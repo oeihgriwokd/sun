@@ -34,7 +34,7 @@
   var main = $("mainImage"), thumbs = $("thumbnails"), counter = $("galleryCounter"), errorEl = $("imageError");
   var lightbox = $("lightbox"), lightboxImage = $("lightboxImage");
 
-  function altFor(i) { return images[i].alt || data.title + ", image " + (i + 1) + " of " + total; }
+  function altFor(i) { return images[i].alt || (data.shortName || data.title) + ", image " + (i + 1) + " of " + total; }
 
   function showImage(index, silent) {
     current = (index + total) % total;
@@ -127,6 +127,18 @@
     buyEl.setAttribute("aria-disabled", "true"); buyEl.setAttribute("role", "link");
   }
 
+  /* keep the phone buy bar in step with the main price and button */
+  function syncSticky() {
+    var sp = $("stickyPrice"), sb = $("stickyBuy");
+    if (!sp || !sb) { return; }
+    sp.textContent = priceEl.textContent;
+    if (buyEl.hasAttribute("href")) {
+      sb.href = buyEl.href; sb.classList.remove("is-disabled"); sb.removeAttribute("aria-disabled"); sb.removeAttribute("role");
+    } else {
+      sb.removeAttribute("href"); sb.classList.add("is-disabled"); sb.setAttribute("aria-disabled", "true"); sb.setAttribute("role", "link");
+    }
+  }
+
   var attrs = data.variationAttributes || [], variations = data.variations || [];
   if (attrs.length && variations.length) {
     var start = variations.filter(function (v) { return v.available !== false && typeof v.price === "number"; })
@@ -145,6 +157,7 @@
         priceEl.textContent = "Not available"; disableBuy();
         announce("This combination is not available.");
       }
+      syncSticky();
     };
 
     attrs.forEach(function (attr, n) {
@@ -166,4 +179,5 @@
   } else if (typeof data.price !== "number" || !isEbayUrl(data.ebayUrl)) {
     disableBuy();
   }
+  syncSticky();
 })();

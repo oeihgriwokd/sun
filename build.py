@@ -2,7 +2,7 @@
 """Builds one static HTML page per product: python3 build.py
 Reads catalog/products.json + template/product.html, writes dist/. Python 3 standard library only.
 Stops with a list of problems (and writes nothing) if any product is invalid."""
-import hashlib, html, json, re, shutil, sys
+import collections, hashlib, html, json, re, shutil, sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -131,7 +131,7 @@ def page(site, title, desc, name, body, extra="", og_image=""):
     og = (f'<meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="website">'
           f'<meta property="og:site_name" content="{esc(site["name"])}">' + (f'<meta property="og:url" content="{esc(url)}">' if url else "")
           + (f'<meta property="og:image" content="{esc(og_image)}">' if og_image else "") + '<meta name="twitter:card" content="summary">')
-    return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    return (f'<!DOCTYPE html>\n<html lang="en-AU">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
             + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body>\n{header()}\n<main class="product prose">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
@@ -140,8 +140,68 @@ def cards(items, pages):
     out = []
     for p in items:
         img = f'<img src="{esc(p["images"][0]["src"])}" alt="" width="190" height="190" loading="lazy" decoding="async">' if p["images"] else ""
-        out.append(f'<li><a class="card" href="{esc(p["id"])}.html">{img}<strong>{esc(p["title"])}</strong><span class="card-price">{esc(price_label(p))}</span></a></li>')
+        out.append(f'<li><a class="card" href="{esc(p["id"])}.html">{img}<strong>{esc(p.get("display") or p["title"])}</strong><span class="card-price">{esc(price_label(p))}</span></a></li>')
     return '<ul class="card-grid">' + "".join(out) + "</ul>"
+
+NOISE = re.compile(r"latest version|australian shipping|aussie shipping|australian|aussie|same day|shipping|high[- ]?speed|fast speed|fast|flash drive|installer recovery fix|installer fix|recovery fix|recovery|beginner easy|beginner|desktop ?& ?laptop|desktop laptop pc|desktop laptop|desktop pc|plug ?& ?play|pc laptop|live install|free|2026|and install guide|and guide|64 bit|windows, ?mac(?:, ?linux)?|windows,mac,linux|\bau\b|\baus\b|bootable usb|\bbootable\b|\bdrive\b|\busb\b|upgrade your computer with linux", re.I)
+BOOTS = {"linux", "tools", "bsd", "android", "retro", "bundles", "sandisk"}
+SUFFIX = {"linux", "tools", "bsd", "android", "retro"}
+
+def clean_words(title):
+    t = NOISE.sub(" ", title.split("|")[0])
+    t = re.sub(r"[^A-Za-z0-9.+/&!()' -]", " ", t)
+    return [w for w in t.replace("&", " ").split() if w.strip("-()'/")]
+
+def display_name(p, n=7):
+    words = clean_words(p["title"])[:n] or p["title"].split()[:6]
+    name = " ".join(words).strip(" -")
+    cat = category_of(p)
+    if cat in SUFFIX and "usb" not in name.lower(): name += " Bootable USB Drive"
+    elif cat == "apps" and "usb" not in name.lower(): name += " on USB"
+    elif cat == "installers" and "usb" not in name.lower(): name += " USB"
+    return name
+
+def make_slug(p):
+    words = clean_words(p["title"])[:8]
+    s = re.sub(r"[^a-z0-9]+", "-", " ".join(words).lower()).strip("-")
+    s = s[:58].rsplit("-", 1)[0] if len(s) > 58 else s
+    if category_of(p) in SUFFIX and "usb" not in s: s += "-bootable-usb"
+    elif category_of(p) == "installers" and "usb" not in s: s += "-usb"
+    return s or "product"
+
+def assign_ids(products, keep):
+    used = {p["id"] for p in products if p["id"] in keep}
+    for p in products:
+        if p["id"] in keep: continue
+        s = make_slug(p)
+        if s in used: s = f"{s}-{(item_of(p) or '0000')[-4:]}"
+        n = 2
+        while s in used: s = f"{s}-{n}"; n += 1
+        p["id"] = s; used.add(s)
+
+ABOUT = {
+    "linux": "{n} is a Linux operating system supplied on a bootable USB drive. Plug it into a computer that can start from USB, restart, and pick the USB drive from the boot menu. Many Linux systems let you try them in live mode before you install anything.",
+    "tools": "{n} is a tool you run by starting your computer from the USB drive instead of its own disk. See the eBay listing for exactly what is included.",
+    "apps": "{n} is free software supplied on a USB drive. See the eBay listing for exactly what is included and which systems it supports.",
+    "sandisk": "{n} is a memory card prepared with a bootable system, for devices that can start from an SD or microSD card, such as the Raspberry Pi. Check that your device supports it before you buy.",
+    "installers": "{n} is a USB drive that carries an installer. See the eBay listing for the systems it supports and what is included.",
+    "bundles": "{n} puts several systems or tools on one USB drive. See the eBay listing for exactly what is included.",
+    "music": "{n} is a USB drive loaded with music, for any car stereo or speaker that plays music from USB.",
+    "retro": "{n} is a bootable system for retro gaming or media centres. Plug it into a compatible device, restart, and boot from the USB drive.",
+    "android": "{n} lets you run an Android-based system on a PC by starting the computer from the USB drive.",
+    "bsd": "{n} is a bootable USB drive for an alternative operating system. Start your computer from the USB drive to try or install it.",
+    "other": "See the eBay listing for full details of this item.",
+}
+
+def faq_for(p, cat, name, lo, hi, nopt, site):
+    q = []
+    if cat in BOOTS:
+        q.append(("How do I start my computer from this USB drive?", "Plug it in, restart the computer and open the boot menu. The key is often Esc, F2, F10, F12 or Del, and it varies by maker. Choose the USB drive, then follow the on-screen steps. Our guide on how to boot from a USB drive explains it in more detail."))
+        q.append(("Will it work on my computer?", "It works on computers that can start from a USB drive or card, which includes many modern PCs. Compatibility depends on your hardware and settings, so check the details on the eBay listing or message the seller on eBay before you buy."))
+    if nopt > 1 and lo is not None:
+        q.append(("Which option should I choose?", f"This listing has {nopt} options with prices from {fmt_price(lo, p['currency'])} to {fmt_price(hi, p['currency'])}. Pick your option on the eBay listing; the price changes with the option."))
+    q.append(("Where do I pay and check out?", f"Checkout and payment happen on eBay Australia. The Buy on eBay button opens the live listing, where you can see the current price, delivery options and return terms for {name}."))
+    return q
 
 def render(template, p, site, ctx):
     start = {"price": p.get("price"), "ebayUrl": p.get("ebayUrl")}
@@ -153,44 +213,55 @@ def render(template, p, site, ctx):
     if p.get("pricePrefix") and is_price(start["price"]): price = f"{p['pricePrefix']} {price}"
     base = (site.get("baseUrl") or "").rstrip("/")
     pr = prices_of(p); lo, hi = (min(pr), max(pr)) if pr else (None, None)
+    nopt = len(p.get("variations", []))
     price_text = (f"from {fmt_price(lo, p['currency'])} to {fmt_price(hi, p['currency'])}" if lo != hi else f"for {fmt_price(hi, p['currency'])}") if pr else ""
-    desc = p.get("description") or trim(f"Shop {p['title']} from Aussie USBs on eBay Australia. Check product details, available options and current pricing before ordering.", 158)
-    cat = CAT[category_of(p)]
+    cat = CAT[category_of(p)]; name = p["display"]
+    about = ABOUT[cat[0]].format(n=name)
+    desc = p.get("description") or trim(f"{name}, {price_text}. {about.split('. ')[0]}. Buy on eBay Australia from {site['name']}.", 158)
     page_url = f"{base}/{p['id']}.html" if base else ""
-    # structured data: only facts we hold (name, photo, price, link); no ratings or stock claims
     offer = {"@type": "Offer", "price": f"{hi:.2f}", "priceCurrency": p["currency"], "url": p.get("ebayUrl") or p["variations"][0]["ebayUrl"]} if pr and lo == hi else (
-        {"@type": "AggregateOffer", "lowPrice": f"{lo:.2f}", "highPrice": f"{hi:.2f}", "priceCurrency": p["currency"], "offerCount": len(p.get("variations", [])), "url": p["variations"][0]["ebayUrl"]} if pr else None)
+        {"@type": "AggregateOffer", "lowPrice": f"{lo:.2f}", "highPrice": f"{hi:.2f}", "priceCurrency": p["currency"], "offerCount": nopt, "url": p["variations"][0]["ebayUrl"]} if pr else None)
     prod = {"@context": "https://schema.org", "@type": "Product", "name": p["title"], "description": desc}
     if p["images"]: prod["image"] = [i["src"] for i in p["images"]]
     if offer: prod["offers"] = offer
-    crumbs = [("Home", f"{base}/" if base else "index.html"), (cat[1], f"{base}/category-{cat[0]}.html" if base else f"category-{cat[0]}.html"), (p["title"], page_url)]
+    crumbs = [("Home", f"{base}/" if base else "index.html"), (cat[1], f"{base}/category-{cat[0]}.html" if base else f"category-{cat[0]}.html"), (name, page_url)]
     bc = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, **({"item": u} if u else {})} for i, (n, u) in enumerate(crumbs)]}
-    og = (f'<meta property="og:title" content="{esc(trim(p["title"], 90))}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="product">'
-          f'<meta property="og:site_name" content="{esc(site["name"])}">' + (f'<meta property="og:url" content="{esc(page_url)}">' if page_url else "")
-          + (f'<meta property="og:image" content="{esc(p["images"][0]["src"])}">' if p["images"] else "") + '<meta name="twitter:card" content="summary">')
+    faqs = faq_for(p, cat[0], name, lo, hi, nopt, site)
+    faq_ld = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs]}
+    og = (f'<meta property="og:title" content="{esc(trim(name, 90))}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="product">'
+          f'<meta property="og:site_name" content="{esc(site["name"])}"><meta property="og:locale" content="en_AU">' + (f'<meta property="og:url" content="{esc(page_url)}">' if page_url else "")
+          + (f'<meta property="og:image" content="{esc(p["images"][0]["src"])}">' if p["images"] else "") + '<meta name="twitter:card" content="summary_large_image">')
+    pre = ('<link rel="preconnect" href="https://i.ebayimg.com">' + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
+           + '<meta name="robots" content="index,follow,max-image-preview:large">')
+    sections = [f'<section class="details"><h2>About {esc(name)}</h2><p>{esc(about)}</p></section>']
+    if cat[0] in BOOTS:
+        sections.append('<section class="details"><h2>How it works</h2><ol><li>Plug the drive into your computer and restart it.</li><li>Open the boot menu (often Esc, F2, F10, F12 or Del) and choose the USB drive.</li><li>Follow the on-screen steps to try or install it. <a href="guide-how-to-boot-from-usb.html">Read the full boot guide</a>.</li></ol></section>')
     if p.get("variations"):
-        a = p["variationAttributes"]; items = []
+        items = []
         for v in p["variations"]:
             label = ", ".join(f"{k}: {x}" for k, x in v["options"].items())
-            items.append(f"<li>{esc(label)} &ndash; {esc(fmt_price(v['price'], p['currency'])) if is_price(v.get('price')) else 'not available'}</li>")
-        details = f'<section class="details"><h2>Options and prices</h2><p>This listing has {len(p["variations"])} options. Choose your option on eBay when you buy.</p><ul>{"".join(items)}</ul></section>'
-    else:
-        details = f'<section class="details"><h2>About this listing</h2><p>{esc(p["title"])} is sold by {esc(site["name"])} on eBay Australia {esc(price_text)}.{" Condition: " + esc(p["condition"]) + "." if p.get("condition") else ""}</p></section>'
-    mates = ctx["by_cat"][cat[0]]; i = mates.index(p["id"]); rel = [ctx["by_id"][mates[(i + k) % len(mates)]] for k in range(1, min(7, len(mates)))]
+            items.append(f"<li><span>{esc(label)}</span><strong>{esc(fmt_price(v['price'], p['currency'])) if is_price(v.get('price')) else 'Not available'}</strong></li>")
+        sections.append(f'<section class="details"><h2>Options and prices</h2><p>{nopt} options available. Choose your option on eBay when you buy.</p><ul class="price-list">{"".join(items)}</ul></section>')
+    sections.append('<section class="details"><h2>Frequently asked questions</h2>' + "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs) + "</section>")
+    sections.append(f'<section class="details"><h2>Listing details</h2><p>eBay listing title: {esc(p["title"])}</p>{"<p>Condition: " + esc(p["condition"]) + "</p>" if p.get("condition") else ""}<p>Sold by {esc(site["name"])} on eBay Australia.</p></section>')
+    mates = ctx["by_cat"][cat[0]]; i = mates.index(p["id"]); rel = [ctx["by_id"][mates[(i + k) % len(mates)]] for k in range(1, min(9, len(mates)))]
     related = f'<section class="related"><h2>More in {esc(cat[1])}</h2>{cards(rel, ctx)}</section>' if rel else ""
-    crumb_html = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="category-{cat[0]}.html">{esc(cat[1])}</a></nav>'
+    crumb_html = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="category-{cat[0]}.html">{esc(cat[1])}</a> &rsaquo; {esc(trim(name, 60))}</nav>'
     template2 = template if p["images"] else re.sub(r"<!--GALLERY-->.*?<!--/GALLERY-->\n?", "", template, flags=re.S)
+    p = dict(p, shortName=name)
     data_json = json.dumps(p, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    short_title = f"{name} | {site['name']}"
+    if len(short_title) > 62: short_title = trim(name, 62 - len(site["name"]) - 3) + f" | {site['name']}"
     vals = {
-        "PAGE_TITLE": esc(trim(p["title"], 62) + " | " + site["name"]), "DESCRIPTION": esc(desc),
-        "CANONICAL": f'<link rel="canonical" href="{esc(page_url)}">' if page_url else "", "HEAD_EXTRA": og + jsonld(prod) + jsonld(bc),
-        "HEADER": header(), "FOOTER": footer(), "BREADCRUMB": crumb_html, "DETAILS": details, "RELATED": related,
+        "PAGE_TITLE": esc(short_title), "DESCRIPTION": esc(desc),
+        "CANONICAL": f'<link rel="canonical" href="{esc(page_url)}">' if page_url else "", "HEAD_EXTRA": pre + og + jsonld(prod) + jsonld(bc) + jsonld(faq_ld),
+        "HEADER": header(), "FOOTER": footer(), "BREADCRUMB": crumb_html, "SECTIONS": "".join(sections), "RELATED": related,
+        "LAYOUT_CLASS": "" if p["images"] else " product-layout--single",
         "FIRST_IMAGE": esc(p["images"][0]["src"]) if p["images"] else "",
-        "FIRST_ALT": esc(p["images"][0]["alt"] or f"{p['title']}, image 1 of {len(p['images'])}") if p["images"] else "",
+        "FIRST_ALT": esc(p["images"][0]["alt"] or f"{name}, image 1 of {len(p['images'])}") if p["images"] else "",
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
-        "BUY_LABEL": "Choose options & buy on eBay" if p.get("variations") else "View listing & buy on eBay",
-        "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if p.get("variations") else "Opens the eBay listing in a new tab, where you complete your purchase.",
+        "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if nopt else "Opens the eBay listing in a new tab, where you complete your purchase.",
         "DATA_JSON": data_json, "ASSET_V": ASSET_V,
     }
     return re.sub(r"\{\{(\w+)\}\}", lambda m: vals[m.group(1)], template2)
@@ -271,7 +342,10 @@ def guides(lk):
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
     site, products = catalog.get("site", {"name": "Aussie USBs"}), catalog.get("products", [])
+    curated_ids = {p.get("id") for p in products}
     products = products + read_imported(ROOT / "catalog" / "imported.json", products)
+    for p in products: p.setdefault("title", "")
+    assign_ids(products, curated_ids)
     seen = set()
     for i, p in enumerate(products): validate(p, i, seen)
     if errors:
@@ -283,6 +357,13 @@ def main():
     global ASSET_V
     ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js"))).hexdigest()[:8]
     products = [normalise(p) for p in products]
+    for p in products: p["display"] = display_name(p)
+    dupes = [n for n, c in collections.Counter(p["display"] for p in products).items() if c > 1]
+    for p in products:
+        if p["display"] in dupes: p["display"] = display_name(p, 12)
+    dupes = [n for n, c in collections.Counter(p["display"] for p in products).items() if c > 1]
+    for p in products:
+        if p["display"] in dupes: p["display"] += f" ({(item_of(p) or '0000')[-4:]})"
     by_id = {p["id"]: p for p in products}
     by_cat = {c[0]: sorted([p["id"] for p in products if category_of(p) == c[0]], key=lambda i: by_id[i]["title"].lower()) for c in CATS}
     ctx = {"by_id": by_id, "by_cat": by_cat}
@@ -291,17 +372,6 @@ def main():
     names = []
     for p in products:
         (DIST / f"{p['id']}.html").write_text(render(template, p, site, ctx), encoding="utf-8")
-    # Preserve the previous long AerynOS URL with a crawlable legacy redirect page.
-    old_aerynos = "aerynos-gnome-linux-live-bootable-usb-flash-drive-107695.html"
-    new_aerynos = "aerynos-gnome-linux-usb.html"
-    (DIST / old_aerynos).write_text(
-        '< !doctype html>'.replace("< !", "<!") + '<html lang="en"><head><meta charset="utf-8">'
-        '<meta name="robots" content="noindex,follow">'
-        f'<link rel="canonical" href="{base}/{new_aerynos}">'
-        f'<meta http-equiv="refresh" content="0;url={new_aerynos}">'
-        '<title>Product moved</title></head><body><p>This product page has moved. '
-        f'<a href="{new_aerynos}">View the AerynOS GNOME Linux USB page</a>.</p></body></html>',
-        encoding="utf-8")
     shop_script = "<script>(function(){var i=document.getElementById('q'),items=[].slice.call(document.querySelectorAll('.card-grid li')),n=document.getElementById('count');function f(){var t=i.value.toLowerCase().trim(),c=0;items.forEach(function(li){var ok=li.textContent.toLowerCase().indexOf(t)>-1;li.hidden=!ok;if(ok)c++});n.textContent=c+' of '+items.length+' products'}var m=/[?&]q=([^&]*)/.exec(location.search);if(m){i.value=decodeURIComponent(m[1].replace(/\\+/g,' '))}i.addEventListener('input',f);f()})();</script>"
     allp = sorted(products, key=lambda p: p["title"].lower())
     shop_body = (f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; All products</nav><h1>All products</h1>'
