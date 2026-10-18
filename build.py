@@ -3,12 +3,15 @@
 Reads catalog/products.json + template/product.html, writes dist/. Python 3 standard library only.
 Stops with a list of problems (and writes nothing) if any product is invalid."""
 import collections, hashlib, html, json, re, shutil, sys
+sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
+import guides_extra
 from pathlib import Path
 from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT / "dist"
 PREFIX = {"AUD": "AU $"}
+TODAY, TODAY_HUMAN = "2026-10-19", "19 October 2026"
 errors = []
 ASSET_V = ""  # changes whenever the CSS or JS changes, so browsers never keep stale copies
 
@@ -122,19 +125,29 @@ def header():
             f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">eBay store</a></nav></header>')
 
 def footer():
-    return ('<footer class="site-footer"><p>Aussie USBs sells on eBay Australia. You complete every purchase on eBay.</p>'
-            f'<p><a href="index.html">Home</a> &middot; <a href="guides.html">Guides</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p></footer>')
+    cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
+    gl = "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in [("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")])
+    return ('<footer class="site-footer"><div class="site-footer__cols"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li></ul></div>'
+            '<div><strong>Aussie USBs</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay Australia. You complete every purchase on eBay.</p>'
+            f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p></div></div></footer>')
 
-def page(site, title, desc, name, body, extra="", og_image=""):
+def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
     base = (site.get("baseUrl") or "").rstrip("/")
     url = f"{base}/{name}" if base and name != "index.html" else (f"{base}/" if base else "")
-    og = (f'<meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="website">'
-          f'<meta property="og:site_name" content="{esc(site["name"])}">' + (f'<meta property="og:url" content="{esc(url)}">' if url else "")
-          + (f'<meta property="og:image" content="{esc(og_image)}">' if og_image else "") + '<meta name="twitter:card" content="summary">')
+    og = (f'<meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="{og_type}">'
+          f'<meta property="og:site_name" content="{esc(site["name"])}"><meta property="og:locale" content="en_AU">' + (f'<meta property="og:url" content="{esc(url)}">' if url else "")
+          + (f'<meta property="og:image" content="{esc(og_image)}">' if og_image else "")
+          + f'<meta name="twitter:card" content="{"summary_large_image" if og_image else "summary"}"><meta name="twitter:title" content="{esc(title)}"><meta name="twitter:description" content="{esc(desc)}">'
+          + (f'<meta name="twitter:image" content="{esc(og_image)}">' if og_image else ""))
     return (f'<!DOCTYPE html>\n<html lang="en-AU">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-            f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n'
+            f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n<meta name="robots" content="index,follow,max-image-preview:large">\n<meta name="theme-color" content="#335FFF">\n'
+            '<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
-            + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body>\n{header()}\n<main class="product prose">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
+            + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
+
+def crumb_ld(site, items):
+    base = (site.get("baseUrl") or "").rstrip("/")
+    return jsonld({"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, "item": f"{base}/{u}" if u else base + "/"} for i, (n, u) in enumerate(items)]})
 
 def cards(items, pages):
     out = []
@@ -193,6 +206,63 @@ ABOUT = {
     "other": "See the eBay listing for full details of this item.",
 }
 
+DISTRO = [
+ (r"ubuntu.*(server)", "Ubuntu Server is the command-line edition of Ubuntu, widely used to run websites, services and home servers."),
+ (r"lubuntu", "Lubuntu is a light Ubuntu flavour that suits older and low-memory computers."),
+ (r"xubuntu", "Xubuntu is an Ubuntu flavour with the light, tidy XFCE desktop."),
+ (r"kubuntu", "Kubuntu is Ubuntu with the customisable KDE Plasma desktop."),
+ (r"ubuntu", "Ubuntu is one of the most widely used desktop Linux systems, with a very large community and long-term support releases."),
+ (r"mint", "Linux Mint has a traditional desktop layout that many Windows users find familiar."),
+ (r"zorin", "Zorin OS is designed to feel familiar to people moving from Windows or macOS."),
+ (r"debian", "Debian is a long-established, stable distribution and the base for many other systems."),
+ (r"fedora", "Fedora offers fairly new software and is popular with developers."),
+ (r"\barch\b|archcraft", "Arch-based systems use rolling releases and suit people who like to shape their own setup."),
+ (r"manjaro", "Manjaro is an Arch-based system with a friendlier installer and graphical tools."),
+ (r"pop[ !_-]?os", "Pop!_OS is made by System76 and is popular with developers and gamers."),
+ (r"elementary", "elementary OS has a clean, simple desktop with a macOS-like look."),
+ (r"\bmx\b", "MX Linux is a stable, lightweight system known for its helpful built-in tools."),
+ (r"kali|wifislax|backbox", "This is a security-testing system intended for authorised testing and learning."),
+ (r"opensuse", "openSUSE is a well-regarded system with strong tools for desktops and servers."),
+ (r"alpine", "Alpine Linux is a very small, security-minded system."),
+ (r"nobara", "Nobara is a Fedora-based system tuned for gaming and creative work."),
+ (r"bodhi|q4os|puppy|porteus|sparky|easyos|antix|peppermint", "This is a lightweight Linux system that can run well on older computers."),
+ (r"clonezilla", "Clonezilla clones and backs up whole disks and partitions."),
+ (r"gparted", "GParted is a graphical tool for resizing and managing disk partitions."),
+ (r"ventoy", "Ventoy lets one drive hold and boot many system images."),
+ (r"dban", "DBAN overwrites hard drives so old data is very hard to recover."),
+ (r"systemrescue|rescatux|testdisk|redo|redorescue|undelete", "This is a rescue tool for repairing systems and recovering files."),
+ (r"raspberry", "Raspberry Pi OS is the standard operating system for Raspberry Pi computers."),
+ (r"chrome os flex", "ChromeOS Flex brings a Chrome-style system to existing PCs and Macs."),
+ (r"batocera|retro ?pie|lakka", "This system turns a compatible device into a retro gaming machine."),
+ (r"libreelec|osmc", "This system turns a compatible device into a Kodi media centre."),
+ (r"volumio", "Volumio is a music streaming system for audio players."),
+ (r"proxmox|truenas", "This is a server system for virtual machines or network storage."),
+ (r"qubes", "Qubes OS isolates apps in separate compartments for stronger security."),
+ (r"android|bliss|primeos|remixos", "This lets you run an Android-based system on a PC."),
+ (r"freebsd|openbsd|netbsd|bsd", "BSD systems are respected Unix-like operating systems with a long history."),
+ (r"freedos", "FreeDOS is a free system compatible with classic DOS programs."),
+]
+
+def distro_blurb(p):
+    t = p["title"].lower()
+    for rx, txt in DISTRO:
+        if re.search(rx, t): return txt
+    return ""
+
+CAT_LONG = {
+ "linux": 'Pick a Linux system, plug the USB drive into your computer and restart. Most can be tried in live mode before installing, so you can see how it runs on your hardware. New to Linux? Start with <a href="guide-best-linux-for-beginners.html">best Linux for beginners</a>, then follow <a href="guide-how-to-boot-from-usb.html">how to boot from USB</a>.',
+ "tools": 'These bootable tools handle jobs that are awkward to do from inside a running system: cloning drives, resizing partitions, recovering files, wiping disks and testing hardware. See <a href="guide-how-to-clone-a-disk-with-clonezilla.html">cloning with Clonezilla</a> and <a href="guide-recover-files-with-a-linux-usb.html">recovering files</a>.',
+ "apps": 'Portable software on a USB drive lets you carry your everyday programs with you. Check each listing for the systems it supports.',
+ "sandisk": 'Bootable SD and microSD cards suit Raspberry Pi and other devices that start from a card. See <a href="guide-raspberry-pi-os-microsd-guide.html">getting started with Raspberry Pi OS</a> and <a href="guide-what-is-persistence-on-a-live-usb.html">what persistence means</a>.',
+ "installers": 'These USB drives carry installers for popular apps and games so you can set them up without a long download. Check the listing for supported systems.',
+ "retro": 'Turn a compatible device into a retro games console, a home theatre or a music streamer. Check that your device is supported before you buy.',
+ "android": 'Run an Android-based system on a PC by starting from the USB drive. Hardware support varies, so try live mode first where offered.',
+ "bsd": 'BSD, DOS and other alternative systems for the curious and for specialist jobs. Boot from the drive to try them.',
+ "bundles": 'Bundles put several systems or tools on one drive, so you can compare them or keep a toolkit in your pocket. See <a href="guide-what-is-ventoy.html">what Ventoy is</a>.',
+ "music": 'USB drives loaded with music, ready to play in any car stereo or speaker that supports USB.',
+ "other": 'A few other items from the store.',
+}
+
 def faq_for(p, cat, name, lo, hi, nopt, site):
     q = []
     if cat in BOOTS:
@@ -216,21 +286,29 @@ def render(template, p, site, ctx):
     nopt = len(p.get("variations", []))
     price_text = (f"from {fmt_price(lo, p['currency'])} to {fmt_price(hi, p['currency'])}" if lo != hi else f"for {fmt_price(hi, p['currency'])}") if pr else ""
     cat = CAT[category_of(p)]; name = p["display"]
-    about = ABOUT[cat[0]].format(n=name)
-    desc = p.get("description") or trim(f"{name}, {price_text}. {about.split('. ')[0]}. Buy on eBay Australia from {site['name']}.", 158)
+    blurb = distro_blurb(p)
+    about = (blurb + " " if blurb else "") + ABOUT[cat[0]].format(n=name)
+    desc = p.get("description") or trim(f"{name}, {price_text}. {(blurb or about.split('. ')[0]).rstrip('.')}. Buy on eBay Australia from {site['name']}.", 158)
     page_url = f"{base}/{p['id']}.html" if base else ""
     offer = {"@type": "Offer", "price": f"{hi:.2f}", "priceCurrency": p["currency"], "url": p.get("ebayUrl") or p["variations"][0]["ebayUrl"]} if pr and lo == hi else (
         {"@type": "AggregateOffer", "lowPrice": f"{lo:.2f}", "highPrice": f"{hi:.2f}", "priceCurrency": p["currency"], "offerCount": nopt, "url": p["variations"][0]["ebayUrl"]} if pr else None)
     prod = {"@context": "https://schema.org", "@type": "Product", "name": p["title"], "description": desc}
     if p["images"]: prod["image"] = [i["src"] for i in p["images"]]
-    if offer: prod["offers"] = offer
+    if offer:
+        offer.update({"availability": "https://schema.org/InStock", "seller": {"@type": "Organization", "name": site["name"]}})
+        if "new" in (p.get("condition") or "").lower(): offer["itemCondition"] = "https://schema.org/NewCondition"
+        prod["offers"] = offer
+    prod["@id"] = page_url + "#product" if page_url else prod.get("name")
+    if item_of(p): prod["sku"] = item_of(p)
+    if page_url: prod["url"] = page_url
     crumbs = [("Home", f"{base}/" if base else "index.html"), (cat[1], f"{base}/category-{cat[0]}.html" if base else f"category-{cat[0]}.html"), (name, page_url)]
     bc = {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "name": n, **({"item": u} if u else {})} for i, (n, u) in enumerate(crumbs)]}
     faqs = faq_for(p, cat[0], name, lo, hi, nopt, site)
     faq_ld = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs]}
     og = (f'<meta property="og:title" content="{esc(trim(name, 90))}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="product">'
           f'<meta property="og:site_name" content="{esc(site["name"])}"><meta property="og:locale" content="en_AU">' + (f'<meta property="og:url" content="{esc(page_url)}">' if page_url else "")
-          + (f'<meta property="og:image" content="{esc(p["images"][0]["src"])}">' if p["images"] else "") + '<meta name="twitter:card" content="summary_large_image">')
+          + (f'<meta property="og:image" content="{esc(p["images"][0]["src"])}">' if p["images"] else "") + f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{esc(trim(name, 70))}"><meta name="twitter:description" content="{esc(desc)}">'
+          + (f'<meta name="twitter:image" content="{esc(p["images"][0]["src"])}"><meta property="og:image:alt" content="{esc(name)}">' if p["images"] else ""))
     pre = ('<link rel="preconnect" href="https://i.ebayimg.com">' + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
            + '<meta name="robots" content="index,follow,max-image-preview:large">')
     sections = [f'<section class="details"><h2>About {esc(name)}</h2><p>{esc(about)}</p></section>']
@@ -244,6 +322,8 @@ def render(template, p, site, ctx):
         sections.append(f'<section class="details"><h2>Options and prices</h2><p>{nopt} options available. Choose your option on eBay when you buy.</p><ul class="price-list">{"".join(items)}</ul></section>')
     sections.append('<section class="details"><h2>Frequently asked questions</h2>' + "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs) + "</section>")
     sections.append(f'<section class="details"><h2>Listing details</h2><p>eBay listing title: {esc(p["title"])}</p>{"<p>Condition: " + esc(p["condition"]) + "</p>" if p.get("condition") else ""}<p>Sold by {esc(site["name"])} on eBay Australia.</p></section>')
+    gl_items = [("how-to-boot-from-usb", "How to boot from a USB drive"), ("how-to-install-linux-from-usb", "How to install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys by brand")] if cat[0] in BOOTS else [("what-is-a-bootable-usb-drive", "What is a bootable USB drive?"), ("is-linux-free-and-safe", "Is Linux free and safe?")]
+    sections.append('<section class="details"><h2>Helpful guides</h2><ul>' + "".join(f'<li><a href="guide-{a_}.html">{b_}</a></li>' for a_, b_ in gl_items) + '</ul></section>')
     mates = ctx["by_cat"][cat[0]]; i = mates.index(p["id"]); rel = [ctx["by_id"][mates[(i + k) % len(mates)]] for k in range(1, min(9, len(mates)))]
     related = f'<section class="related"><h2>More in {esc(cat[1])}</h2>{cards(rel, ctx)}</section>' if rel else ""
     crumb_html = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="category-{cat[0]}.html">{esc(cat[1])}</a> &rsaquo; {esc(trim(name, 60))}</nav>'
@@ -384,37 +464,73 @@ def main():
     for slug_, name, _, intro in CATS:
         items = [by_id[i] for i in by_cat[slug_]]
         if not items: continue
-        body = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; {esc(name)}</nav><h1>{esc(name)}</h1><p>{esc(intro)} {len(items)} listing{"s" if len(items) != 1 else ""}. Every item is bought on eBay Australia.</p>{cards(items, ctx)}'
+        body = (f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; {esc(name)}</nav><h1>{esc(name)}</h1><p>{esc(intro)} {len(items)} listing{"s" if len(items) != 1 else ""}. Every item is bought on eBay Australia.</p>'
+                f'<p>{CAT_LONG.get(slug_, "")}</p>{cards(items, ctx)}')
         title = f"{name} ({len(items)} listings) | {site['name']}"
-        extra = jsonld({"@context": "https://schema.org", "@type": "CollectionPage", "name": name, "description": intro})
-        (DIST / f"category-{slug_}.html").write_text(page(site, title, trim(f"{intro} Browse {len(items)} listings from {site['name']} on eBay Australia.", 158), f"category-{slug_}.html", body, extra), encoding="utf-8")
+        extra = jsonld({"@context": "https://schema.org", "@type": "CollectionPage", "name": name, "description": intro, "url": f"{base}/category-{slug_}.html",
+                        "mainEntity": {"@type": "ItemList", "numberOfItems": len(items), "itemListElement": [{"@type": "ListItem", "position": n + 1, "url": f"{base}/{q['id']}.html", "name": q["display"]} for n, q in enumerate(items[:50])]}}) + crumb_ld(site, [("Home", ""), (name, f"category-{slug_}.html")])
+        (DIST / f"category-{slug_}.html").write_text(page(site, title, trim(f"{intro} Browse {len(items)} listings from {site['name']} on eBay Australia.", 158), f"category-{slug_}.html", body, extra, items[0]["images"][0]["src"] if items[0]["images"] else ""), encoding="utf-8")
         names.append(f"category-{slug_}.html")
     # guides
     def lk(item, text):
         p = by_item.get(item); return f'<a href="{esc(p["id"])}.html">{esc(text)}</a>' if p else esc(text)
-    g = guides(lk)
-    for gslug, gtitle, gdesc, gbody in g:
-        body = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="guides.html">Guides</a></nav><h1>{esc(gtitle)}</h1>{gbody}'
-        art = jsonld({"@context": "https://schema.org", "@type": "Article", "headline": gtitle, "description": gdesc, "publisher": {"@type": "Organization", "name": site["name"]}})
-        (DIST / f"guide-{gslug}.html").write_text(page(site, f"{gtitle} | {site['name']}", gdesc, f"guide-{gslug}.html", body, art), encoding="utf-8")
-        names.append(f"guide-{gslug}.html")
-    gl = "".join(f'<li><a class="card" href="guide-{s}.html"><strong>{esc(t)}</strong><span>{esc(d)}</span></a></li>' for s, t, d, _ in g)
-    (DIST / "guides.html").write_text(page(site, f"Guides: bootable USB drives and Linux | {site['name']}", "Guides on booting from USB, choosing a Linux distribution and live USB mode.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Guides</h1><ul class="card-grid">{gl}</ul>'), encoding="utf-8")
+    g = guides(lk) + guides_extra.more(lk)
+    for n_, (gslug, gtitle, gdesc, gbody) in enumerate(g):
+        fn = f"guide-{gslug}.html"
+        others = [g[(n_ + k) % len(g)] for k in (1, 2, 3)]
+        rel = '<h2>More guides</h2><ul>' + "".join(f'<li><a href="guide-{s_}.html">{esc(t_)}</a></li>' for s_, t_, _, _ in others) + '</ul><p><a class="btn" href="category-linux.html">Browse Linux USB drives</a> <a class="btn btn--ghost" href="shop.html">See all products</a></p>'
+        body = f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; <a href="guides.html">Guides</a> &rsaquo; {esc(trim(gtitle, 50))}</nav><article><h1>{esc(gtitle)}</h1><p class="meta">Updated {TODAY_HUMAN}</p>{gbody}{rel}</article>'
+        art = jsonld({"@context": "https://schema.org", "@type": "Article", "headline": trim(gtitle, 110), "description": gdesc, "inLanguage": "en-AU", "datePublished": TODAY, "dateModified": TODAY,
+                      "author": {"@type": "Organization", "name": site["name"]}, "publisher": {"@type": "Organization", "name": site["name"]}, "mainEntityOfPage": f"{base}/{fn}"}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html"), (gtitle, fn)])
+        (DIST / fn).write_text(page(site, trim(f"{gtitle} | {site['name']}", 70), gdesc, fn, body, art, main_class="product prose article", og_type="article"), encoding="utf-8")
+        names.append(fn)
+    gl = "".join(f'<li><a class="card" href="guide-{s_}.html"><strong>{esc(t_)}</strong><span>{esc(d_)}</span></a></li>' for s_, t_, d_, _ in g)
+    gl_home = "".join(f'<li><a class="card" href="guide-{s_}.html"><strong>{esc(t_)}</strong><span>{esc(trim(d_, 110))}</span></a></li>' for s_, t_, d_, _ in g[4:10])
+    gjson = jsonld({"@context": "https://schema.org", "@type": "CollectionPage", "name": "Guides: bootable USB drives and Linux", "url": f"{base}/guides.html", "mainEntity": {"@type": "ItemList", "itemListElement": [{"@type": "ListItem", "position": i + 1, "url": f"{base}/guide-{x[0]}.html", "name": x[1]} for i, x in enumerate(g)]}}) + crumb_ld(site, [("Home", ""), ("Guides", "guides.html")])
+    (DIST / "guides.html").write_text(page(site, f"Linux and Bootable USB Guides | {site['name']}", f"{len(g)} plain-English guides: boot from USB, install Linux, dual boot, choose a distribution, boot menu keys, Clonezilla and more.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Linux and bootable USB guides</h1><p>Plain-English help for trying, installing and fixing computers with a bootable USB drive.</p><ul class="card-grid">{gl}</ul>', gjson), encoding="utf-8")
     names.append("guides.html")
     # home page
-    cat_cards = "".join(f'<li><a class="card" href="category-{s}.html"><strong>{esc(n)}</strong><span>{len(by_cat[s])} listing{"s" if len(by_cat[s]) != 1 else ""}</span></a></li>' for s, n, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s])
+    cat_icons = {"linux": "🐧", "tools": "🛠️", "apps": "💿", "sandisk": "💾", "installers": "📦", "retro": "🎮", "android": "🤖", "bsd": "👹", "bundles": "🧰", "music": "🎵", "other": "🔑"}
+    cat_cards = "".join(f'<li><a class="card card--cat" href="category-{s_}.html"><span class="cat-icon" aria-hidden="true">{cat_icons.get(s_, "")}</span><strong>{esc(n_)}</strong><span>{len(by_cat[s_])} listing{"s" if len(by_cat[s_]) != 1 else ""}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
     feat = [by_item[i] for i in FEATURED if i in by_item]
-    body = (f'<h1>Bootable USB drives and software installers</h1><p>{esc(site["name"])} sells bootable USB drives, SD cards and software installers on eBay Australia, including Ubuntu, Linux Mint, Debian and Zorin OS. '
-            f'Browse {len(products)} listings, then complete your purchase on eBay.</p><h2 id="browse">Browse by category</h2><ul class="card-grid">{cat_cards}</ul><p><a href="shop.html">See all {len(products)} products</a></p>'
-            f'<h2>Popular picks</h2>{cards(feat, ctx)}<h2>Guides</h2><ul class="card-grid">{gl}</ul>')
-    org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": (base + "/") if base else "", "sameAs": [STORE]})
-    (DIST / "index.html").write_text(page(site, f"{site['name']} | Bootable USB Drives & Installers: Ubuntu, Linux Mint, Debian", trim(f"Browse {len(products)} bootable USB drives, SD cards and installers, including Ubuntu, Linux Mint, Debian and Zorin OS. Sold by {site['name']} on eBay Australia.", 158), "index.html", body, org), encoding="utf-8")
+    faqs_home = [("What is a bootable USB drive?", "It is a USB drive set up so a computer can start from it. You can use it to try or install an operating system such as Linux, or to run a rescue or disk tool."),
+                 ("Do I have to install Linux to try it?", "No. Most Linux systems have a live mode that runs from the USB drive without changing your computer's disk. You can install later if you like it."),
+                 ("Will it work on my computer?", "It works on computers that can start from USB, which includes most PCs from the last decade or so. Check the eBay listing or message the seller if you are unsure."),
+                 ("How do I buy?", "Choose a product here and press Buy on eBay. Checkout, payment and delivery are handled by eBay Australia."),
+                 ("Is Linux free?", "Linux itself is free. You are paying for a ready-made USB drive that saves you the downloading and preparing.")]
+    faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs_home)
+    faq_ld = jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs_home]})
+    n_all = len(products)
+    body = (f'<section class="hero"><div class="hero__text"><p class="eyebrow">Australian seller on eBay</p><h1>Bootable USB drives for Linux, rescue tools and software</h1>'
+            f'<p class="hero__lead">Try or install Ubuntu, Linux Mint, Debian, Zorin OS and more. Plug in, restart and go. Browse {n_all} ready-made USB drives and SD cards, with checkout on eBay Australia.</p>'
+            f'<p class="hero__cta"><a class="btn" href="shop.html">Shop all {n_all} products</a><a class="btn btn--ghost" href="guides.html">Read the guides</a></p></div>'
+            '<ul class="hero__points"><li>Sold on eBay Australia</li><li>Try in live mode before you install</li><li>Free step-by-step guides on this site</li></ul></section>'
+            '<section class="home-section"><h2>How it works</h2><ol class="steps"><li><strong>Choose a system</strong><span>Pick Linux, a rescue tool or software from the categories below.</span></li>'
+            '<li><strong>Plug in and restart</strong><span>Open the boot menu and choose the USB drive. <a href="guide-boot-menu-keys-by-brand.html">Find your key</a>.</span></li>'
+            '<li><strong>Try or install</strong><span>Run it live, or install it. <a href="guide-how-to-install-linux-from-usb.html">See how</a>.</span></li></ol></section>'
+            f'<section class="home-section" id="browse"><h2>Browse by category</h2><ul class="card-grid card-grid--cats">{cat_cards}</ul></section>'
+            f'<section class="home-section"><h2>Popular picks</h2>{cards(feat, ctx)}<p class="more"><a href="shop.html">See all {n_all} products &rarr;</a></p></section>'
+            '<section class="home-section"><h2>Not sure where to start?</h2><ul class="quick"><li><a href="guide-best-linux-for-beginners.html">Best Linux for beginners</a></li><li><a href="guide-best-linux-for-old-laptops.html">Best Linux for old laptops</a></li>'
+            '<li><a href="guide-ubuntu-vs-linux-mint.html">Ubuntu vs Linux Mint</a></li><li><a href="guide-linux-for-windows-10-end-of-support.html">Linux after Windows 10 support ended</a></li><li><a href="guide-best-linux-for-gaming.html">Best Linux for gaming</a></li><li><a href="guide-how-to-clone-a-disk-with-clonezilla.html">Clone a disk with Clonezilla</a></li></ul></section>'
+            f'<section class="home-section"><h2>Guides</h2><ul class="card-grid">{gl_home}</ul><p class="more"><a href="guides.html">All {len(g)} guides &rarr;</a></p></section>'
+            f'<section class="home-section details"><h2>Frequently asked questions</h2>{faq_html}</section>')
+    site_ld = jsonld({"@context": "https://schema.org", "@type": "WebSite", "name": site["name"], "url": base + "/", "inLanguage": "en-AU", "potentialAction": {"@type": "SearchAction", "target": {"@type": "EntryPoint", "urlTemplate": base + "/shop.html?q={search_term_string}"}, "query-input": "required name=search_term_string"}})
+    org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": base + "/", "sameAs": [STORE]})
+    og_img = feat[0]["images"][0]["src"] if feat and feat[0]["images"] else ""
+    (DIST / "index.html").write_text(page(site, f"Bootable Linux USB Drives Australia | {site['name']}", trim(f"Buy bootable USB drives and SD cards in Australia: Ubuntu, Linux Mint, Debian, Zorin OS, rescue tools and more. {n_all} listings from {site['name']} on eBay.", 158), "index.html", body, org + site_ld + faq_ld, og_img, main_class="product home", body_class="home-page"), encoding="utf-8")
+    # shop page structured data
+    sp = DIST / "shop.html"; sp.write_text(sp.read_text(encoding="utf-8").replace("</head>", crumb_ld(site, [("Home", ""), ("All products", "shop.html")]) + "</head>", 1), encoding="utf-8")
+    # sitemap + robots
+    pages_ = ["index.html"] + names
+    def sm(u, imgs=()):
+        loc = base + "/" if u == "index.html" else f"{base}/{u}"
+        return f"<url><loc>{esc(loc)}</loc><lastmod>{TODAY}</lastmod>" + "".join(f"<image:image><image:loc>{esc(i['src'])}</image:loc></image:image>" for i in imgs[:4]) + "</url>"
+    urls = pages_ + [f"{p['id']}.html" for p in products]
     if base:
-        urls = [base + "/"] + [f"{base}/{n}" for n in names] + [f"{base}/{p['id']}.html" for p in products]
-        (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + "\n".join(f"<url><loc>{esc(u)}</loc></url>" for u in urls) + "\n</urlset>\n", encoding="utf-8")
-        (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
+        (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' + "\n".join([sm(u) for u in pages_] + [sm(f"{p['id']}.html", p["images"]) for p in products]) + "\n</urlset>\n", encoding="utf-8")
+        (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
     if site.get("domain"): (DIST / "CNAME").write_text(site["domain"] + "\n", encoding="utf-8")
-    (DIST / "404.html").write_text(page(site, f"Page not found | {site['name']}", "This page could not be found.", "404.html", '<h1>Page not found</h1><p>That page does not exist. <a href="index.html">Go to the home page</a>.</p>', '<meta name="robots" content="noindex">'), encoding="utf-8")
+    (DIST / "404.html").write_text(page(site, f"Page not found | {site['name']}", "This page could not be found.", "404.html", '<h1>Page not found</h1><p>That page does not exist. <a href="index.html">Go to the home page</a>, browse <a href="shop.html">all products</a> or read our <a href="guides.html">guides</a>.</p>', '<meta name="robots" content="noindex">'), encoding="utf-8")
     print(f"Built {len(products)} product pages, {len([c for c in by_cat.values() if c])} category pages, {len(g)} guides, a guides index, the home page and a sitemap with {len(urls) if base else 0} URLs into {DIST}")
 
 if __name__ == "__main__":
