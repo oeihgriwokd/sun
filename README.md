@@ -1,4 +1,4 @@
-# Aussie USBs product pages
+# Linuxonusb.com product pages
 
 One template + one catalogue file = one static HTML page per product.
 

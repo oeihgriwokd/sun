@@ -119,7 +119,7 @@ FEATURED = ["800016537860", "800016421272", "800016323704", "800034663198", "800
 
 def header():
     nav = "".join(f'<a href="category-{s}.html">{esc(n)}</a>' for s, n in [("linux", "Linux"), ("tools", "Tools"), ("apps", "Software"), ("sandisk", "SD cards"), ("installers", "Installers")])
-    return ('<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html">Aussie USBs</a>'
+    return ('<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html">linuxonusb<span>.com</span></a>'
             '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
             f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a>'
             f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">eBay store</a></nav></header>')
@@ -128,7 +128,7 @@ def footer():
     cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
     gl = "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in [("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")])
     return ('<footer class="site-footer"><div class="site-footer__cols"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li></ul></div>'
-            '<div><strong>Aussie USBs</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay Australia. You complete every purchase on eBay.</p>'
+            '<div><strong>Linuxonusb.com</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay Australia. You complete every purchase on eBay.</p>'
             f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p></div></div></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
@@ -421,7 +421,7 @@ def guides(lk):
 
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
-    site, products = catalog.get("site", {"name": "Aussie USBs"}), catalog.get("products", [])
+    site, products = catalog.get("site", {"name": "Linuxonusb.com"}), catalog.get("products", [])
     curated_ids = {p.get("id") for p in products}
     products = products + read_imported(ROOT / "catalog" / "imported.json", products)
     for p in products: p.setdefault("title", "")
@@ -490,8 +490,7 @@ def main():
     (DIST / "guides.html").write_text(page(site, f"Linux and Bootable USB Guides | {site['name']}", f"{len(g)} plain-English guides: boot from USB, install Linux, dual boot, choose a distribution, boot menu keys, Clonezilla and more.", "guides.html", f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Guides</nav><h1>Linux and bootable USB guides</h1><p>Plain-English help for trying, installing and fixing computers with a bootable USB drive.</p><ul class="card-grid">{gl}</ul>', gjson), encoding="utf-8")
     names.append("guides.html")
     # home page
-    cat_icons = {"linux": "🐧", "tools": "🛠️", "apps": "💿", "sandisk": "💾", "installers": "📦", "retro": "🎮", "android": "🤖", "bsd": "👹", "bundles": "🧰", "music": "🎵", "other": "🔑"}
-    cat_cards = "".join(f'<li><a class="card card--cat" href="category-{s_}.html"><span class="cat-icon" aria-hidden="true">{cat_icons.get(s_, "")}</span><strong>{esc(n_)}</strong><span>{len(by_cat[s_])} listing{"s" if len(by_cat[s_]) != 1 else ""}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
+    circ = "".join(f'<li><a href="category-{s_}.html">' + (f'<img src="{esc(by_id[by_cat[s_][0]]["images"][0]["src"])}" alt="" width="96" height="96" loading="lazy">' if by_id[by_cat[s_][0]]["images"] else '<span class="circ-ph"></span>') + f'<span>{esc(n_)}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
     feat = [by_item[i] for i in FEATURED if i in by_item]
     faqs_home = [("What is a bootable USB drive?", "It is a USB drive set up so a computer can start from it. You can use it to try or install an operating system such as Linux, or to run a rescue or disk tool."),
                  ("Do I have to install Linux to try it?", "No. Most Linux systems have a live mode that runs from the USB drive without changing your computer's disk. You can install later if you like it."),
@@ -501,18 +500,16 @@ def main():
     faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs_home)
     faq_ld = jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs_home]})
     n_all = len(products)
-    body = (f'<section class="hero"><div class="hero__text"><p class="eyebrow">Australian seller on eBay</p><h1>Bootable USB drives for Linux, rescue tools and software</h1>'
-            f'<p class="hero__lead">Try or install Ubuntu, Linux Mint, Debian, Zorin OS and more. Plug in, restart and go. Browse {n_all} ready-made USB drives and SD cards, with checkout on eBay Australia.</p>'
-            f'<p class="hero__cta"><a class="btn" href="shop.html">Shop all {n_all} products</a><a class="btn btn--ghost" href="guides.html">Read the guides</a></p></div>'
-            '<ul class="hero__points"><li>Sold on eBay Australia</li><li>Try in live mode before you install</li><li>Free step-by-step guides on this site</li></ul></section>'
-            '<section class="home-section"><h2>How it works</h2><ol class="steps"><li><strong>Choose a system</strong><span>Pick Linux, a rescue tool or software from the categories below.</span></li>'
-            '<li><strong>Plug in and restart</strong><span>Open the boot menu and choose the USB drive. <a href="guide-boot-menu-keys-by-brand.html">Find your key</a>.</span></li>'
-            '<li><strong>Try or install</strong><span>Run it live, or install it. <a href="guide-how-to-install-linux-from-usb.html">See how</a>.</span></li></ol></section>'
-            f'<section class="home-section" id="browse"><h2>Browse by category</h2><ul class="card-grid card-grid--cats">{cat_cards}</ul></section>'
-            f'<section class="home-section"><h2>Popular picks</h2>{cards(feat, ctx)}<p class="more"><a href="shop.html">See all {n_all} products &rarr;</a></p></section>'
+    hero_imgs = "".join(f'<a href="{esc(f_["id"])}.html"><img src="{esc(f_["images"][0]["src"])}" alt="{esc(f_["display"])}" width="200" height="200" {"fetchpriority=high" if i_ == 0 else "loading=lazy"}></a>' for i_, f_ in enumerate([x for x in feat if x["images"]][:4]))
+    body = (f'<section class="banner"><div class="banner__text"><h1>Bootable USB drives for Linux, rescue tools and software</h1>'
+            f'<p>Try or install Ubuntu, Linux Mint, Debian, Zorin OS and more. Plug in, restart and go. {n_all} listings, checkout on eBay Australia.</p>'
+            f'<p><a class="btn" href="shop.html">Shop all products</a> <a class="btn btn--ghost" href="guides.html">Read the guides</a></p></div><div class="banner__imgs">{hero_imgs}</div></section>'
+            '<ul class="strip"><li>Sold on eBay Australia</li><li>Try in live mode before you install</li><li>Free setup guides</li></ul>'
+            f'<section class="home-section" id="browse"><h2>Shop by category</h2><ul class="circles">{circ}</ul></section>'
+            f'<section class="home-section"><div class="sec-head"><h2>Popular picks</h2><a href="shop.html">See all {n_all}</a></div>{cards(feat, ctx)}</section>'
             '<section class="home-section"><h2>Not sure where to start?</h2><ul class="quick"><li><a href="guide-best-linux-for-beginners.html">Best Linux for beginners</a></li><li><a href="guide-best-linux-for-old-laptops.html">Best Linux for old laptops</a></li>'
             '<li><a href="guide-ubuntu-vs-linux-mint.html">Ubuntu vs Linux Mint</a></li><li><a href="guide-linux-for-windows-10-end-of-support.html">Linux after Windows 10 support ended</a></li><li><a href="guide-best-linux-for-gaming.html">Best Linux for gaming</a></li><li><a href="guide-how-to-clone-a-disk-with-clonezilla.html">Clone a disk with Clonezilla</a></li></ul></section>'
-            f'<section class="home-section"><h2>Guides</h2><ul class="card-grid">{gl_home}</ul><p class="more"><a href="guides.html">All {len(g)} guides &rarr;</a></p></section>'
+            f'<section class="home-section"><div class="sec-head"><h2>Guides</h2><a href="guides.html">All {len(g)} guides</a></div><ul class="card-grid guide-grid">{gl_home}</ul></section>'
             f'<section class="home-section details"><h2>Frequently asked questions</h2>{faq_html}</section>')
     site_ld = jsonld({"@context": "https://schema.org", "@type": "WebSite", "name": site["name"], "url": base + "/", "inLanguage": "en-AU", "potentialAction": {"@type": "SearchAction", "target": {"@type": "EntryPoint", "urlTemplate": base + "/shop.html?q={search_term_string}"}, "query-input": "required name=search_term_string"}})
     org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": base + "/", "sameAs": [STORE]})
