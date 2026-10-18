@@ -154,7 +154,7 @@ def render(template, p, site, ctx):
     base = (site.get("baseUrl") or "").rstrip("/")
     pr = prices_of(p); lo, hi = (min(pr), max(pr)) if pr else (None, None)
     price_text = (f"from {fmt_price(lo, p['currency'])} to {fmt_price(hi, p['currency'])}" if lo != hi else f"for {fmt_price(hi, p['currency'])}") if pr else ""
-    desc = p.get("description") or trim(f"{p['title']}. {price_text.capitalize()}. Sold by {site['name']} on eBay Australia.", 158)
+    desc = p.get("description") or trim(f"Shop {p['title']} from Aussie USBs on eBay Australia. Check product details, available options and current pricing before ordering.", 158)
     cat = CAT[category_of(p)]
     page_url = f"{base}/{p['id']}.html" if base else ""
     # structured data: only facts we hold (name, photo, price, link); no ratings or stock claims
@@ -189,6 +189,7 @@ def render(template, p, site, ctx):
         "FIRST_ALT": esc(p["images"][0]["alt"] or f"{p['title']}, image 1 of {len(p['images'])}") if p["images"] else "",
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
+        "BUY_LABEL": "Choose options & buy on eBay" if p.get("variations") else "View listing & buy on eBay",
         "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if p.get("variations") else "Opens the eBay listing in a new tab, where you complete your purchase.",
         "DATA_JSON": data_json, "ASSET_V": ASSET_V,
     }
@@ -290,6 +291,17 @@ def main():
     names = []
     for p in products:
         (DIST / f"{p['id']}.html").write_text(render(template, p, site, ctx), encoding="utf-8")
+    # Preserve the previous long AerynOS URL with a crawlable legacy redirect page.
+    old_aerynos = "aerynos-gnome-linux-live-bootable-usb-flash-drive-107695.html"
+    new_aerynos = "aerynos-gnome-linux-usb.html"
+    (DIST / old_aerynos).write_text(
+        '< !doctype html>'.replace("< !", "<!") + '<html lang="en"><head><meta charset="utf-8">'
+        '<meta name="robots" content="noindex,follow">'
+        f'<link rel="canonical" href="{base}/{new_aerynos}">'
+        f'<meta http-equiv="refresh" content="0;url={new_aerynos}">'
+        '<title>Product moved</title></head><body><p>This product page has moved. '
+        f'<a href="{new_aerynos}">View the AerynOS GNOME Linux USB page</a>.</p></body></html>',
+        encoding="utf-8")
     shop_script = "<script>(function(){var i=document.getElementById('q'),items=[].slice.call(document.querySelectorAll('.card-grid li')),n=document.getElementById('count');function f(){var t=i.value.toLowerCase().trim(),c=0;items.forEach(function(li){var ok=li.textContent.toLowerCase().indexOf(t)>-1;li.hidden=!ok;if(ok)c++});n.textContent=c+' of '+items.length+' products'}var m=/[?&]q=([^&]*)/.exec(location.search);if(m){i.value=decodeURIComponent(m[1].replace(/\\+/g,' '))}i.addEventListener('input',f);f()})();</script>"
     allp = sorted(products, key=lambda p: p["title"].lower())
     shop_body = (f'<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; All products</nav><h1>All products</h1>'

@@ -11,40 +11,54 @@
 </head>
 <body>
 {{HEADER}}
-<main class="product">
+<main class="product product-page">
   {{BREADCRUMB}}
-  <!--GALLERY-->
-  <section class="gallery" id="gallery" aria-label="Product images">
-    <div class="gallery-stage">
-      <div class="main-image-wrap">
-        <button type="button" class="main-image-button" id="openViewer" aria-label="View full-size image">
-          <img id="mainImage" class="main-image" src="{{FIRST_IMAGE}}" alt="{{FIRST_ALT}}" width="500" height="500" fetchpriority="high" decoding="async">
-        </button>
-        <p class="image-error" id="imageError" hidden>This image could not be loaded.</p>
+  <div class="product-hero">
+    <section class="product-gallery-column" aria-label="Product photos">
+      <!--GALLERY-->
+      <section class="gallery" id="gallery" aria-label="Product images">
+        <div class="gallery-stage"><div class="main-image-wrap">
+          <button type="button" class="main-image-button" id="openViewer" aria-label="View full-size product image">
+            <img id="mainImage" class="main-image" src="{{FIRST_IMAGE}}" alt="{{FIRST_ALT}}" width="600" height="600" fetchpriority="high" decoding="async">
+          </button><p class="image-error" id="imageError" hidden>Product image could not be loaded.</p>
+        </div>
+        <button type="button" class="gallery-arrow gallery-arrow--prev" id="prevImage" aria-label="Previous image" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <button type="button" class="gallery-arrow gallery-arrow--next" id="nextImage" aria-label="Next image" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+        <span class="gallery-counter" id="galleryCounter" aria-hidden="true" hidden></span></div>
+        <div class="thumbnails" id="thumbnails" role="group" aria-label="Choose a product image" hidden></div>
+      </section>
+      <!--/GALLERY-->
+      <p class="photo-caption">Review the product photos before opening the full eBay listing.</p>
+    </section>
+    <section class="product-summary" aria-labelledby="product-title">
+      <p class="eyebrow">LINUX ON USB <span aria-hidden="true">·</span> SOLD ON EBAY AUSTRALIA</p>
+      <h1 id="product-title">{{TITLE}}</h1>
+      {{CONDITION_HTML}}
+      <p class="price" id="productPrice">{{PRICE}}</p>
+      <div class="purchase-points">
+        <p><span aria-hidden="true">✓</span> Check the listing details and available options on eBay</p>
+        <p><span aria-hidden="true">✓</span> Checkout and payment handled by eBay</p>
+        <p><span aria-hidden="true">✓</span> Sold by Aussie USBs on eBay Australia</p>
       </div>
-      <button type="button" class="gallery-arrow gallery-arrow--prev" id="prevImage" aria-label="Previous image" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-      </button>
-      <button type="button" class="gallery-arrow gallery-arrow--next" id="nextImage" aria-label="Next image" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-      </button>
-      <span class="gallery-counter" id="galleryCounter" aria-hidden="true" hidden></span>
-    </div>
-    <div class="thumbnails" id="thumbnails" role="group" aria-label="Choose a product image" hidden></div>
+      <div id="variations"></div>
+      <a class="buy-button" id="buyButton" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">{{BUY_LABEL}}</a>
+      <p class="buy-note">{{BUY_NOTE}}</p>
+      <p class="shipping-note">Once your order has shipped, eBay will provide your tracking code so you can follow your delivery.</p>
+      <p class="secure-note">You’ll be taken to eBay to review the live listing and complete your order.</p>
+    </section>
+  </div>
+  <section class="product-content">
+    {{DETAILS}}
+    <section class="buying-help" aria-labelledby="buying-help-title">
+      <h2 id="buying-help-title">Before you buy</h2>
+      <div class="help-grid">
+        <div><h3>Check compatibility</h3><p>Check the eBay listing and the software’s official requirements to confirm it suits your computer and intended use.</p></div>
+        <div><h3>Review the options</h3><p>If this listing has variations, choose the option you want on eBay and confirm the displayed price before checkout.</p></div>
+        <div><h3>Simple checkout</h3><p>This website helps you discover the product. Payment and order details are handled on eBay.</p></div>
+      </div>
+    </section>
+    {{RELATED}}
   </section>
-  <!--/GALLERY-->
-
-  <h1>{{TITLE}}</h1>
-  {{CONDITION_HTML}}
-  <p class="price" id="productPrice">{{PRICE}}</p>
-  <div id="variations"></div>
-
-  <a class="buy-button" id="buyButton" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">Buy on eBay</a>
-  <p class="buy-note">{{BUY_NOTE}}</p>
-  <p class="visually-hidden" id="status" role="status" aria-live="polite"></p>
-
-  {{DETAILS}}
-  {{RELATED}}
 </main>
 {{FOOTER}}
 
