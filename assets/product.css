@@ -2,6 +2,8 @@
 :root {
   --accent: #335FFF;
   --accent-hover: #2548D8;
+  --cta: #FF6200;
+  --cta-hover: #E05500;
   --text: #191919;
   --bg: #fff;
   --muted: #707070;
@@ -59,8 +61,9 @@ h1 { margin: var(--space-3) 0 var(--space-2); font-size: var(--text-title); line
 .variation-option input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 3px; }
 
 /* Buy button */
-.buy-button { display: block; width: 100%; min-height: 54px; padding: 16px 20px; background: var(--accent); color: #fff; text-align: center; text-decoration: none; font-size: 17px; font-weight: bold; border-radius: 7px; transition: background .2s; }
-.buy-button:hover { background: var(--accent-hover); }
+.buy-button { display: block; width: 100%; min-height: 54px; padding: 16px 20px; background: var(--cta); color: #fff; text-align: center; text-decoration: none; font-size: 17px; font-weight: bold; border-radius: 7px; transition: background .2s; }
+.buy-button:hover { background: var(--cta-hover); }
+.buy-button { font-size: 19px !important; box-shadow: 0 2px 0 #c24e00; }
 .buy-button.is-disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
 .buy-note { margin: 10px 0 0; font-size: 14px; text-align: center; color: var(--muted); }
 
@@ -305,3 +308,15 @@ main:focus { outline: none; }
 .suggest small { display: block; color: #707070; }
 .suggest .sg-h { padding: 8px 14px 4px; font-size: 12px; color: #707070; text-transform: uppercase; letter-spacing: .04em; }
 .suggest .sg-all { font-weight: 700; color: var(--accent); border-top: 1px solid #e5e5e5; margin-top: 4px; }
+
+/* Trust, payments, FAQ polish */
+.pay-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0; }
+.pay { display: block; border-radius: 4px; }
+.pay-cap { flex-basis: 100%; font-size: 13px; color: var(--muted); margin-top: 2px; }
+.trust { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 32px 0 8px; }
+.trust div { border: 1px solid var(--border); border-top: 3px solid var(--cta); border-radius: var(--radius); padding: 14px 16px; background: var(--surface); }
+.trust strong { display: block; color: var(--accent); margin-bottom: 4px; }
+.trust span { font-size: 14px; color: var(--muted); }
+.footer-pay { margin-top: 16px; } .site-footer .copy { font-size: 13px; margin-top: 10px; }
+.details details[open] summary { color: var(--accent); }
+.btn { box-shadow: 0 2px 0 rgba(0,0,0,.15); }

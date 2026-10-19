@@ -4,7 +4,7 @@ Reads catalog/products.json + template/product.html, writes dist/. Python 3 stan
 Stops with a list of problems (and writes nothing) if any product is invalid."""
 import collections, hashlib, html, json, re, shutil, sys
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
-import guides_extra
+import guides_extra, guides2, faq_data
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -119,23 +119,43 @@ FEATURED = ["800016537860", "800016421272", "800016323704", "800034663198", "800
 
 LANGS = [("es", "Español"), ("fr", "Français"), ("de", "Deutsch"), ("pt", "Português"), ("it", "Italiano"), ("nl", "Nederlands"), ("pl", "Polski"), ("tr", "Türkçe"), ("ru", "Русский"), ("ar", "العربية"), ("hi", "हिन्दी"), ("id", "Bahasa Indonesia"), ("vi", "Tiếng Việt"), ("zh-CN", "简体中文"), ("ja", "日本語"), ("ko", "한국어")]
 
+def _b(label, inner, bg="#fff", w=44):
+    return f'<svg class="pay" role="img" aria-label="{label}" viewBox="0 0 {w} 28" width="{w}" height="28" xmlns="http://www.w3.org/2000/svg"><rect x=".5" y=".5" width="{w-1}" height="27" rx="4" fill="{bg}" stroke="#d9d9d9"/>{inner}</svg>'
+
+def pay_html(caption=True):
+    t = 'font-family="Arial,Helvetica,sans-serif" font-weight="700" text-anchor="middle"'
+    b = [
+     _b("Visa", f'<text x="22" y="19" {t} font-size="13" font-style="italic" fill="#1A1F71">VISA</text>'),
+     _b("Mastercard", '<circle cx="17" cy="14" r="8" fill="#EB001B"/><circle cx="27" cy="14" r="8" fill="#F79E1B"/><path d="M22 7.9a8 8 0 0 1 0 12.2 8 8 0 0 1 0-12.2z" fill="#FF5F00"/>'),
+     _b("American Express", f'<text x="22" y="18" {t} font-size="8.5" fill="#fff">AMEX</text>', "#2E77BC"),
+     _b("PayPal", f'<text x="22" y="18" {t} font-size="9.5" fill="#003087">Pay<tspan fill="#009CDE">Pal</tspan></text>'),
+     _b("Apple Pay", f'<text x="22" y="18" {t} font-size="8.5" fill="#000">Apple Pay</text>'),
+     _b("Google Pay", f'<text x="22" y="18" {t} font-size="8.5" fill="#5F6368"><tspan fill="#4285F4">G</tspan> Pay</text>'),
+    ]
+    cap = '<span class="pay-cap">Secure checkout on eBay. Payment options shown at checkout can vary by country.</span>' if caption else ""
+    return f'<div class="pay-row" aria-label="Payment methods accepted at eBay checkout">{"".join(b)}{cap}</div>'
+
+def trust_html():
+    items = [("Secure eBay checkout", "Pay on eBay with the method you prefer."), ("Buyer protection", "Terms are shown on every eBay listing."), ("Worldwide delivery", "Shipping to many countries."), ("Guides and support", "Setup help for every drive.")]
+    return '<section class="trust" aria-label="Why buy from us">' + "".join(f'<div><strong>{a}</strong><span>{b}</span></div>' for a, b in items) + '</section>' + pay_html()
+
 def header():
     nav = "".join(f'<a href="category-{s}.html">{esc(n)}</a>' for s, n in [("linux", "Linux"), ("tools", "Tools"), ("apps", "Software"), ("sandisk", "SD cards"), ("installers", "Installers")])
     opts = '<option value="">Language</option>' + "".join(f'<option value="{c}">{n}</option>' for c, n in LANGS)
     return ('<a class="skip" href="#main">Skip to main content</a>'
-            '<div class="utility"><div class="utility__inner"><span>Selling to buyers worldwide on eBay &middot; prices in AUD</span><span class="utility__right"><a href="guides.html">Guides</a>'
+            '<div class="utility"><div class="utility__inner"><span>Selling to buyers worldwide on eBay &middot; prices in AUD</span><span class="utility__right"><a href="faq.html">Help &amp; FAQ</a><a href="guides.html">Guides</a>'
             f'<a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a><label class="visually-hidden" for="lang">Translate this page</label><select id="lang" class="lang">{opts}</select></span></div></div>'
             '<header class="site-header"><div class="site-header__inner"><a class="site-name" href="index.html" aria-label="Linuxonusb.com home">linuxonusb<span>.com</span></a>'
             '<form class="site-search" action="shop.html" role="search"><input name="q" type="search" placeholder="Search all products" aria-label="Search all products"><button type="submit">Search</button></form></div>'
-            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a></nav></header>')
+            f'<nav class="site-nav" aria-label="Main"><a href="shop.html">All products</a>{nav}<a href="guides.html">Guides</a><a href="faq.html">FAQ</a></nav></header>')
 
 def footer():
     cats = "".join(f'<li><a href="category-{s}.html">{esc(n)}</a></li>' for s, n, _, _ in CATS if s in ("linux", "tools", "apps", "sandisk", "installers", "bundles"))
     gl = "".join(f'<li><a href="guide-{s}.html">{t}</a></li>' for s, t in [("how-to-boot-from-usb", "How to boot from USB"), ("how-to-install-linux-from-usb", "Install Linux from USB"), ("best-linux-for-beginners", "Best Linux for beginners"), ("boot-menu-keys-by-brand", "Boot menu keys")])
-    return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li><li><a href="shop-by-system.html">Shop by system</a></li></ul></div>'
+    return ('<footer class="site-footer"><nav class="site-footer__cols" aria-label="Footer"><div><strong>Shop</strong><ul>' + cats + '</ul></div><div><strong>Guides</strong><ul>' + gl + '<li><a href="guides.html">All guides</a></li><li><a href="faq.html">Help &amp; FAQ</a></li><li><a href="shop-by-system.html">Shop by system</a></li></ul></div>'
             '<div><strong>Linuxonusb.com</strong><p>Bootable USB drives, SD cards and software installers, sold on eBay. You complete every purchase on eBay.</p>'
             f'<p><a href="index.html">Home</a> &middot; <a href="shop.html">All products</a> &middot; <a href="{STORE}" target="_blank" rel="noopener noreferrer">Our eBay store</a></p><p>Machine translation is provided by Google Translate through the language menu at the top of the page.</p></div></nav>'
-            '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
+            ''+ '<div class="footer-pay">' + pay_html() + '</div><p class="copy">&copy; ' + str(__import__('datetime').date.today().year) + ' Linuxonusb.com. All trademarks belong to their owners. Payments, delivery and returns are provided by eBay.</p>' + '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
     base = (site.get("baseUrl") or "").rstrip("/")
@@ -147,7 +167,7 @@ def page(site, title, desc, name, body, extra="", og_image="", main_class="produ
           + (f'<meta name="twitter:image" content="{esc(og_image)}">' if og_image else ""))
     return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n<meta name="robots" content="index,follow,max-image-preview:large">\n<meta name="theme-color" content="#335FFF">\n'
-            '<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n<script src="assets/search.js" defer></script>\n'
+            '<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n<link rel="icon" href="favicon.ico" sizes="48x48">\n<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">\n<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n<link rel="manifest" href="site.webmanifest">\n<meta name="author" content="Linuxonusb.com">\n<meta property="og:locale" content="en_AU">\n<script src="assets/search.js" defer></script>\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
             + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main id="main" tabindex="-1" class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
 
@@ -379,7 +399,7 @@ def render(template, p, site, ctx):
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
         "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if nopt else "Opens the eBay listing in a new tab, where you complete your purchase.",
-        "DATA_JSON": data_json, "ASSET_V": ASSET_V,
+        "PAYMENTS": pay_html(False), "DATA_JSON": data_json, "ASSET_V": ASSET_V,
     }
     return re.sub(r"\{\{(\w+)\}\}", lambda m: vals[m.group(1)], template2)
 
@@ -470,7 +490,8 @@ def main():
         print("\n".join(" - " + e for e in errors)); sys.exit(1)
     template = (ROOT / "template" / "product.html").read_text(encoding="utf-8")
     if DIST.exists(): shutil.rmtree(DIST)
-    DIST.mkdir(); shutil.copytree(ROOT / "assets", DIST / "assets")
+    DIST.mkdir(); shutil.copytree(ROOT / "assets", DIST / "assets"); shutil.copy(ROOT / "assets" / "favicon.ico", DIST / "favicon.ico")
+    (DIST / "site.webmanifest").write_text(json.dumps({"name": site["name"], "short_name": "Linuxonusb", "start_url": "/", "display": "browser", "theme_color": "#335FFF", "background_color": "#ffffff", "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}]}), encoding="utf-8")
     global ASSET_V
     ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js"))).hexdigest()[:8]
     products = [normalise(p) for p in products]
@@ -511,7 +532,7 @@ def main():
     # guides
     def lk(item, text):
         p = by_item.get(item); return f'<a href="{esc(p["id"])}.html">{esc(text)}</a>' if p else esc(text)
-    g = guides(lk) + guides_extra.more(lk)
+    g = guides(lk) + guides_extra.more(lk) + guides2.more(lk)
     brand_links = '<h2>Boot instructions by brand</h2><ul>' + "".join(f'<li><a href="boot-from-usb-{b_[0]}.html">How to boot from USB on {esc(b_[1])}</a></li>' for b_ in BRANDS) + '</ul>'
     g = [(a_, b_, c_, d_ + brand_links) if a_ == "boot-menu-keys-by-brand" else (a_, b_, c_, d_) for a_, b_, c_, d_ in g]
     for n_, (gslug, gtitle, gdesc, gbody) in enumerate(g):
@@ -607,15 +628,23 @@ def main():
             '<section class="home-section"><h2>Not sure where to start?</h2><ul class="quick"><li><a href="guide-best-linux-for-beginners.html">Best Linux for beginners</a></li><li><a href="guide-best-linux-for-old-laptops.html">Best Linux for old laptops</a></li>'
             '<li><a href="guide-ubuntu-vs-linux-mint.html">Ubuntu vs Linux Mint</a></li><li><a href="guide-linux-for-windows-10-end-of-support.html">Linux after Windows 10 support ended</a></li><li><a href="guide-best-linux-for-gaming.html">Best Linux for gaming</a></li><li><a href="guide-how-to-clone-a-disk-with-clonezilla.html">Clone a disk with Clonezilla</a></li></ul></section>'
             f'<section class="home-section"><div class="sec-head"><h2>Guides</h2><a href="guides.html">All {len(g)} guides</a></div><ul class="card-grid guide-grid">{gl_home}</ul></section>'
-            f'<section class="home-section details"><h2>Frequently asked questions</h2>{faq_html}</section>')
+            + trust_html() + f'<section class="home-section details"><h2>Frequently asked questions</h2>{faq_html}<p><a class="btn" href="faq.html">See all help and FAQs</a></p></section>')
     site_ld = jsonld({"@context": "https://schema.org", "@type": "WebSite", "name": site["name"], "url": base + "/", "inLanguage": "en", "potentialAction": {"@type": "SearchAction", "target": {"@type": "EntryPoint", "urlTemplate": base + "/shop.html?q={search_term_string}"}, "query-input": "required name=search_term_string"}})
-    org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": base + "/", "sameAs": [STORE]})
+    org = jsonld({"@context": "https://schema.org", "@type": "Organization", "name": site["name"], "url": base + "/", "logo": base + "/assets/icon-512.png", "image": base + "/assets/icon-512.png", "sameAs": [STORE]})
     og_img = feat[0]["images"][0]["src"] if feat and feat[0]["images"] else ""
     (DIST / "index.html").write_text(page(site, f"Bootable USB Drives with Linux | {site['name']}", trim(f"Buy bootable USB drives and SD cards, shipped to many countries: Ubuntu, Linux Mint, Debian, Zorin OS, rescue tools and more. {n_all} listings from {site['name']} on eBay.", 158), "index.html", body, org + site_ld + faq_ld, og_img, main_class="product home", body_class="home-page"), encoding="utf-8")
     # shop page structured data
     sp = DIST / "shop.html"; sp.write_text(sp.read_text(encoding="utf-8").replace("</head>", crumb_ld(site, [("Home", ""), ("All products", "shop.html")]) + "</head>", 1), encoding="utf-8")
+    # FAQ / help page
+    fh = "".join(f'<section class="details"><h2>{esc(sec)}</h2>' + "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in qs) + "</section>" for sec, qs in faq_data.FAQ)
+    allq = [qa for _, qs in faq_data.FAQ for qa in qs]
+    fld = jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in allq]})
+    fbody = ('<nav class="crumbs" aria-label="Breadcrumb"><a href="index.html">Home</a> &rsaquo; Help and FAQ</nav><h1>Help centre and frequently asked questions</h1>'
+             '<p>Answers about ordering, payment, delivery, bootable USB drives and choosing a Linux system. Cannot find yours? Ask on any eBay listing or through <a href="' + STORE + '" target="_blank" rel="noopener noreferrer">our eBay store</a>.</p>' + pay_html() + fh
+             + '<p><a class="btn" href="shop.html">Browse all products</a> <a class="btn btn--ghost" href="guides.html">Read our guides</a></p>')
+    (DIST / "faq.html").write_text(page(site, f"FAQ and Help Centre | {site['name']}", "Answers on payment, delivery, returns, bootable USB drives, Secure Boot, live mode, persistence and choosing the right Linux system.", "faq.html", fbody, fld + crumb_ld(site, [("Home", ""), ("Help and FAQ", "faq.html")])), encoding="utf-8")
     # sitemap + robots
-    pages_ = ["index.html"] + names
+    pages_ = ["index.html", "faq.html"] + names
     def sm(u, imgs=()):
         loc = base + "/" if u == "index.html" else f"{base}/{u}"
         return f"<url><loc>{esc(loc)}</loc><lastmod>{TODAY}</lastmod>" + "".join(f"<image:image><image:loc>{esc(i['src'])}</image:loc></image:image>" for i in imgs[:4]) + "</url>"

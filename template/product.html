@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en-AU">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,6 +7,7 @@
 <meta name="description" content="{{DESCRIPTION}}">
 <meta name="theme-color" content="#335FFF">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<script src="assets/search.js" defer></script>
 {{CANONICAL}}
 {{HEAD_EXTRA}}
 <link rel="stylesheet" href="assets/product.css?v={{ASSET_V}}">
@@ -46,8 +47,9 @@
       <div id="variations"></div>
       <a class="buy-button" id="buyButton" href="{{EBAY_URL}}" target="_blank" rel="noopener noreferrer">Buy on eBay</a>
       <p class="buy-note">{{BUY_NOTE}}</p>
+      {{PAYMENTS}}
       <ul class="trust">
-        <li>Checkout and payment on eBay Australia</li>
+        <li>Checkout and payment on eBay</li>
         <li>Prices in Australian dollars (AUD)</li>
         <li>Delivery options and destinations are shown on the eBay listing</li>
       </ul>
