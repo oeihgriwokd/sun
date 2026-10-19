@@ -76,11 +76,15 @@ def localize(u):
     """Use a self-hosted copy (img_local/<id>.jpg) when one exists, else keep the eBay URL."""
     m = re.search(r"/images/g/([^/]+)/", u)
     if m and (ROOT / "img_local" / f"{m.group(1)}.jpg").exists(): return f"img/{m.group(1)}.jpg"
-    if u.startswith("https://i.ebayimg.com/"): return PROXY + urllib.parse.quote(u, safe="")  # not blocked by tracking protection
+    if u.startswith("https://i.ebayimg.com/"): return PROXY + urllib.parse.quote(u, safe="") + "&w=500&output=webp&q=80"  # not blocked by tracking protection
     return u
 
+def thumb(u, w):
+    """Smaller proxied copy for cards and thumbnails (faster first load)."""
+    return re.sub(r"&w=\d+", f"&w={w}", u) if u.startswith(PROXY) else u
+
 def absimg(u):
-    if u and u.startswith(PROXY): return urllib.parse.unquote(u[len(PROXY):])
+    if u and u.startswith(PROXY): return urllib.parse.unquote(u[len(PROXY):].split("&")[0])
     return u if not u or u.startswith("http") else (ABS_BASE + "/" + u if ABS_BASE else u)
 
 def normalise(p):
@@ -203,7 +207,7 @@ def crumb_ld(site, items):
 def cards(items, pages):
     out = []
     for p in items:
-        img = f'<img src="{esc(p["images"][0]["src"])}" alt="" width="190" height="190" loading="lazy" decoding="async">' if p["images"] else ""
+        img = f'<img src="{esc(thumb(p["images"][0]["src"], 380))}" alt="" width="190" height="190" loading="lazy" decoding="async">' if p["images"] else ""
         out.append(f'<li><a class="card" href="{esc(p["id"])}.html">{img}<strong>{esc(p.get("display") or p["title"])}</strong><span class="card-price">{esc(price_label(p))}</span></a></li>')
     return '<ul class="card-grid">' + "".join(out) + "</ul>"
 
@@ -508,7 +512,7 @@ def guides(lk):
 
 _page_inner = page
 def page(*a, **k):
-    return _page_inner(*a, **k).replace("</head>", FB_SCRIPT + "</head>", 1)
+    return _page_inner(*a, **k).replace("</head>", '<link rel="preconnect" href="https://wsrv.nl">' + FB_SCRIPT + "</head>", 1)
 
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
@@ -635,7 +639,7 @@ def main():
         c_ = cat_of.get(q["id"], "other")
         kw = " ".join([cname.get(c_, ""), SYN.get(c_, ""), distro_blurb(q)]).lower()
         e = {"i": q["id"], "t": q["display"], "k": kw}
-        if q["images"]: e["m"] = q["images"][0]["src"]
+        if q["images"]: e["m"] = thumb(q["images"][0]["src"], 120)
         if pf:
             try: e["p"] = pf(q)
             except Exception: pass
@@ -644,7 +648,7 @@ def main():
     (DIST / "assets" / "search.json").write_text(json.dumps({"p": pidx, "c": cidx}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print("hubs", len(hub_pages), "boot pages", len(BRANDS), "price fn", pf.__name__ if pf else None)
     # home page
-    circ = "".join(f'<li><a href="category-{s_}.html">' + (f'<img src="{esc(by_id[by_cat[s_][0]]["images"][0]["src"])}" alt="" width="96" height="96" loading="lazy">' if by_id[by_cat[s_][0]]["images"] else '<span class="circ-ph"></span>') + f'<span>{esc(n_)}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
+    circ = "".join(f'<li><a href="category-{s_}.html">' + (f'<img src="{esc(thumb(by_id[by_cat[s_][0]]["images"][0]["src"], 192))}" alt="" width="96" height="96" loading="lazy">' if by_id[by_cat[s_][0]]["images"] else '<span class="circ-ph"></span>') + f'<span>{esc(n_)}</span></a></li>' for s_, n_, _, _ in sorted(CATS, key=lambda c: DISPLAY.index(c[0])) if by_cat[s_])
     feat = [by_item[i] for i in FEATURED if i in by_item]
     faqs_home = [("What is a bootable USB drive?", "It is a USB drive set up so a computer can start from it. You can use it to try or install an operating system such as Linux, or to run a rescue or disk tool."),
                  ("Do I have to install Linux to try it?", "No. Most Linux systems have a live mode that runs from the USB drive without changing your computer's disk. You can install later if you like it."),
@@ -654,7 +658,7 @@ def main():
     faq_html = "".join(f"<details><summary>{esc(q)}</summary><p>{esc(a)}</p></details>" for q, a in faqs_home)
     faq_ld = jsonld({"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs_home]})
     n_all = len(products)
-    hero_imgs = "".join(f'<a href="{esc(f_["id"])}.html"><img src="{esc(f_["images"][0]["src"])}" alt="{esc(f_["display"])}" width="200" height="200" {"fetchpriority=high" if i_ == 0 else "loading=lazy"}></a>' for i_, f_ in enumerate([x for x in feat if x["images"]][:4]))
+    hero_imgs = "".join(f'<a href="{esc(f_["id"])}.html"><img src="{esc(thumb(f_["images"][0]["src"], 400))}" alt="{esc(f_["display"])}" width="200" height="200" {"fetchpriority=high" if i_ == 0 else "loading=lazy"}></a>' for i_, f_ in enumerate([x for x in feat if x["images"]][:4]))
     body = (f'<section class="banner"><div class="banner__text"><h1>Bootable USB drives for Linux, rescue tools and software</h1>'
             f'<p>Try or install Ubuntu, Linux Mint, Debian, Zorin OS and more. Plug in, restart and go. {n_all} listings, checkout on eBay, delivery to buyers worldwide.</p>'
             f'<p><a class="btn" href="shop.html">Shop all products</a> <a class="btn btn--ghost" href="guides.html">Read the guides</a></p></div><div class="banner__imgs">{hero_imgs}</div></section>'
