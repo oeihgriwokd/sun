@@ -67,10 +67,22 @@ def validate(p, index, seen):
         if not is_price(p.get("price")): bad("'price' must be a number above 0")
         if not is_ebay(p.get("ebayUrl")): bad("'ebayUrl' must be an https eBay URL")
 
+ABS_BASE = ""
+
+def localize(u):
+    """Use a self-hosted copy (img_local/<id>.jpg) when one exists, else keep the eBay URL."""
+    m = re.search(r"/images/g/([^/]+)/", u)
+    if m and (ROOT / "img_local" / f"{m.group(1)}.jpg").exists(): return f"img/{m.group(1)}.jpg"
+    return u
+
+def absimg(u):
+    return u if not u or u.startswith("http") else (ABS_BASE + "/" + u if ABS_BASE else u)
+
 def normalise(p):
     p = dict(p)
     if p.get("title"): p["title"] = re.sub(r"\b(\w+)(\s+\1\b)+", r"\1", p["title"], flags=re.I)
     p["images"] = [{"src": i, "alt": ""} if isinstance(i, str) else {"src": i["src"], "alt": i.get("alt", "")} for i in p.get("images", [])]
+    for i in p["images"]: i["src"] = localize(i["src"])
     return p
 
 def esc(s): return html.escape(str(s), quote=True)
@@ -159,6 +171,7 @@ def footer():
             ''+ '<div class="footer-pay">' + pay_html() + '</div><p class="copy">&copy; ' + str(__import__('datetime').date.today().year) + ' Linuxonusb.com. All trademarks belong to their owners. Payments, delivery and returns are provided by eBay.</p>' + '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
+    og_image = absimg(og_image)
     if len(title) > 62 and " | " in title:
         base_, suf_ = title.rsplit(" | ", 1)
         room = 62 - len(suf_) - 3
@@ -356,7 +369,7 @@ def render(template, p, site, ctx):
     offer = {"@type": "Offer", "price": f"{hi:.2f}", "priceCurrency": p["currency"], "url": p.get("ebayUrl") or p["variations"][0]["ebayUrl"]} if pr and lo == hi else (
         {"@type": "AggregateOffer", "lowPrice": f"{lo:.2f}", "highPrice": f"{hi:.2f}", "priceCurrency": p["currency"], "offerCount": nopt, "url": p["variations"][0]["ebayUrl"]} if pr else None)
     prod = {"@context": "https://schema.org", "@type": "Product", "name": p["title"], "description": desc}
-    if p["images"]: prod["image"] = [i["src"] for i in p["images"]]
+    if p["images"]: prod["image"] = [absimg(i["src"]) for i in p["images"]]
     if offer:
         offer.update({"availability": "https://schema.org/InStock", "seller": {"@type": "Organization", "name": site["name"]}})
         if "new" in (p.get("condition") or "").lower(): offer["itemCondition"] = "https://schema.org/NewCondition"
@@ -370,9 +383,9 @@ def render(template, p, site, ctx):
     faq_ld = {"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": q, "acceptedAnswer": {"@type": "Answer", "text": a}} for q, a in faqs]}
     og = (f'<meta property="og:title" content="{esc(trim(name, 90))}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="product">'
           f'<meta property="og:site_name" content="{esc(site["name"])}">' + (f'<meta property="og:url" content="{esc(page_url)}">' if page_url else "")
-          + (f'<meta property="og:image" content="{esc(p["images"][0]["src"])}">' if p["images"] else "") + f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{esc(trim(name, 70))}"><meta name="twitter:description" content="{esc(desc)}">'
-          + (f'<meta name="twitter:image" content="{esc(p["images"][0]["src"])}"><meta property="og:image:alt" content="{esc(name)}">' if p["images"] else ""))
-    pre = ('<link rel="preconnect" href="https://i.ebayimg.com">' + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
+          + (f'<meta property="og:image" content="{esc(absimg(p["images"][0]["src"]))}">' if p["images"] else "") + f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{esc(trim(name, 70))}"><meta name="twitter:description" content="{esc(desc)}">'
+          + (f'<meta name="twitter:image" content="{esc(absimg(p["images"][0]["src"]))}"><meta property="og:image:alt" content="{esc(name)}">' if p["images"] else ""))
+    pre = (('<link rel="preconnect" href="https://i.ebayimg.com">' if not p["images"] or p["images"][0]["src"].startswith("http") else "") + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
            + '<meta name="robots" content="index,follow,max-image-preview:large">')
     sections = [f'<section class="details"><h2>About {esc(name)}</h2><p>{esc(about)}</p></section>']
     if cat[0] in BOOTS:
@@ -506,6 +519,10 @@ def main():
     (DIST / "site.webmanifest").write_text(json.dumps({"name": site["name"], "short_name": "Linuxonusb", "start_url": "/", "display": "browser", "theme_color": "#335FFF", "background_color": "#ffffff", "icons": [{"src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png"}, {"src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png"}]}), encoding="utf-8")
     global ASSET_V
     ASSET_V = hashlib.md5(b"".join((ROOT / "assets" / f).read_bytes() for f in ("product.css", "product.js"))).hexdigest()[:8]
+    global ABS_BASE
+    ABS_BASE = (site.get("baseUrl") or "").rstrip("/")
+    (ROOT / "img_local").mkdir(exist_ok=True)
+    shutil.copytree(ROOT / "img_local", DIST / "img")
     products = [normalise(p) for p in products]
     for p in products: p["display"] = display_name(p)
     dupes = [n for n, c in collections.Counter(p["display"] for p in products).items() if c > 1]
@@ -706,7 +723,7 @@ def main():
     pages_ = ["index.html", "faq.html"] + names
     def sm(u, imgs=()):
         loc = base + "/" if u == "index.html" else f"{base}/{u}"
-        return f"<url><loc>{esc(loc)}</loc><lastmod>{TODAY}</lastmod>" + "".join(f"<image:image><image:loc>{esc(i['src'])}</image:loc></image:image>" for i in imgs[:4]) + "</url>"
+        return f"<url><loc>{esc(loc)}</loc><lastmod>{TODAY}</lastmod>" + "".join(f"<image:image><image:loc>{esc(absimg(i['src']))}</image:loc></image:image>" for i in imgs[:4]) + "</url>"
     urls = pages_ + [f"{p['id']}.html" for p in products]
     if base:
         (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' + "\n".join([sm(u) for u in pages_] + [sm(f"{p['id']}.html", p["images"]) for p in products]) + "\n</urlset>\n", encoding="utf-8")
