@@ -4,7 +4,7 @@ Reads catalog/products.json + template/product.html, writes dist/. Python 3 stan
 Stops with a list of problems (and writes nothing) if any product is invalid."""
 import collections, hashlib, html, json, re, shutil, sys
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
-import guides_extra, guides2, faq_data
+import guides_extra, guides2, guides3, faq_data
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -69,6 +69,7 @@ def validate(p, index, seen):
 
 def normalise(p):
     p = dict(p)
+    if p.get("title"): p["title"] = re.sub(r"\b(\w+)(\s+\1\b)+", r"\1", p["title"], flags=re.I)
     p["images"] = [{"src": i, "alt": ""} if isinstance(i, str) else {"src": i["src"], "alt": i.get("alt", "")} for i in p.get("images", [])]
     return p
 
@@ -158,6 +159,12 @@ def footer():
             ''+ '<div class="footer-pay">' + pay_html() + '</div><p class="copy">&copy; ' + str(__import__('datetime').date.today().year) + ' Linuxonusb.com. All trademarks belong to their owners. Payments, delivery and returns are provided by eBay.</p>' + '<script>(function(){var l=document.getElementById("lang");if(l)l.addEventListener("change",function(){if(l.value)location.href="https://translate.google.com/translate?sl=en&tl="+l.value+"&u="+encodeURIComponent(location.href.split("#")[0])})})();</script></footer>')
 
 def page(site, title, desc, name, body, extra="", og_image="", main_class="product prose", og_type="website", body_class=""):
+    if len(title) > 62 and " | " in title:
+        base_, suf_ = title.rsplit(" | ", 1)
+        room = 62 - len(suf_) - 3
+        base_ = re.sub(r"\s*\(\d+ listings\)$", "", base_) if len(base_) > room else base_
+        if len(base_) > room: base_ = base_[:room].rsplit(" ", 1)[0].rstrip(" ,&-")
+        title = base_ + " | " + suf_
     base = (site.get("baseUrl") or "").rstrip("/")
     url = f"{base}/{name}" if base and name != "index.html" else (f"{base}/" if base else "")
     og = (f'<meta property="og:title" content="{esc(title)}"><meta property="og:description" content="{esc(desc)}"><meta property="og:type" content="{og_type}">'
@@ -167,7 +174,7 @@ def page(site, title, desc, name, body, extra="", og_image="", main_class="produ
           + (f'<meta name="twitter:image" content="{esc(og_image)}">' if og_image else ""))
     return (f'<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f'<title>{esc(title)}</title>\n<meta name="description" content="{esc(desc)}">\n<meta name="robots" content="index,follow,max-image-preview:large">\n<meta name="theme-color" content="#335FFF">\n'
-            '<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">\n<link rel="icon" href="favicon.ico" sizes="48x48">\n<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">\n<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n<link rel="manifest" href="site.webmanifest">\n<meta name="author" content="Linuxonusb.com">\n<meta property="og:locale" content="en_AU">\n<script src="assets/search.js" defer></script>\n'
+            '<link rel="icon" href="favicon.ico" sizes="any">\n<link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png">\n<link rel="icon" type="image/png" sizes="48x48" href="assets/icon-48.png">\n<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n<link rel="manifest" href="site.webmanifest">\n<meta name="author" content="Linuxonusb.com">\n<meta property="og:locale" content="en_AU">\n<script src="assets/search.js" defer></script>\n'
             + (f'<link rel="canonical" href="{esc(url)}">\n' if url else "") + og + extra
             + f'\n<link rel="stylesheet" href="assets/product.css?v={ASSET_V}">\n</head>\n<body{(" class=" + chr(34) + body_class + chr(34)) if body_class else ""}>\n{header()}\n<main id="main" tabindex="-1" class="{main_class}">\n{body}\n</main>\n{footer()}\n</body>\n</html>\n')
 
@@ -189,7 +196,12 @@ SUFFIX = {"linux", "tools", "bsd", "android", "retro"}
 def clean_words(title):
     t = NOISE.sub(" ", title.split("|")[0])
     t = re.sub(r"[^A-Za-z0-9.+/&!()' -]", " ", t)
-    return [w for w in t.replace("&", " ").split() if w.strip("-()'/")]
+    out = []
+    for w in t.replace("&", " ").split():
+        if not w.strip("-()'/"): continue
+        if out and out[-1].lower() == w.lower(): continue
+        out.append(w)
+    return out
 
 def display_name(p, n=7):
     words = clean_words(p["title"])[:n] or p["title"].split()[:6]
@@ -532,7 +544,7 @@ def main():
     # guides
     def lk(item, text):
         p = by_item.get(item); return f'<a href="{esc(p["id"])}.html">{esc(text)}</a>' if p else esc(text)
-    g = guides(lk) + guides_extra.more(lk) + guides2.more(lk)
+    g = guides(lk) + guides_extra.more(lk) + guides2.more(lk) + guides3.more(lk)
     brand_links = '<h2>Boot instructions by brand</h2><ul>' + "".join(f'<li><a href="boot-from-usb-{b_[0]}.html">How to boot from USB on {esc(b_[1])}</a></li>' for b_ in BRANDS) + '</ul>'
     g = [(a_, b_, c_, d_ + brand_links) if a_ == "boot-menu-keys-by-brand" else (a_, b_, c_, d_) for a_, b_, c_, d_ in g]
     for n_, (gslug, gtitle, gdesc, gbody) in enumerate(g):
@@ -653,7 +665,7 @@ def main():
         (DIST / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' + "\n".join([sm(u) for u in pages_] + [sm(f"{p['id']}.html", p["images"]) for p in products]) + "\n</urlset>\n", encoding="utf-8")
         (DIST / "robots.txt").write_text(f"User-agent: *\nAllow: /\n\nSitemap: {base}/sitemap.xml\n", encoding="utf-8")
     if site.get("domain"): (DIST / "CNAME").write_text(site["domain"] + "\n", encoding="utf-8")
-    (DIST / "404.html").write_text(page(site, f"Page not found | {site['name']}", "This page could not be found.", "404.html", '<h1>Page not found</h1><p>That page does not exist. <a href="index.html">Go to the home page</a>, browse <a href="shop.html">all products</a> or read our <a href="guides.html">guides</a>.</p>', '<meta name="robots" content="noindex">'), encoding="utf-8")
+    (DIST / "404.html").write_text(page(site, f"Page not found | {site['name']}", "This page could not be found. Browse all products, read our guides or return to the Linuxonusb.com home page.", "404.html", '<h1>Page not found</h1><p>That page does not exist. <a href="index.html">Go to the home page</a>, browse <a href="shop.html">all products</a> or read our <a href="guides.html">guides</a>.</p>', '<meta name="robots" content="noindex">'), encoding="utf-8")
     print(f"Built {len(products)} product pages, {len([c for c in by_cat.values() if c])} category pages, {len(g)} guides, a guides index, the home page and a sitemap with {len(urls) if base else 0} URLs into {DIST}")
 
 if __name__ == "__main__":
