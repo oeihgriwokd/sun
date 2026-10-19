@@ -15,7 +15,7 @@ def more(lk):
 <h2>Before you begin</h2>
 <ul><li>Back up your files to an external drive or cloud storage.</li><li>Plug a laptop into power.</li><li>Decide whether to replace your current system or keep it (see <a href="guide-how-to-dual-boot-linux-and-windows.html">dual booting</a>).</li></ul>
 <h2>Steps</h2>
-<ol><li>Insert the USB drive and <a href="guide-how-to-boot-from-usb.html">boot from it</a>.</li><li>Choose to try the system first (live mode) or go straight to Install.</li><li>Pick your language, keyboard layout and Wi-Fi network.</li><li>Choose the install type: erase the disk and install Linux, or install alongside your current system.</li><li>Set your time zone (for Australia, pick your nearest city), name, computer name and password.</li><li>Wait for the files to copy, then restart when asked and remove the USB drive.</li></ol>
+<ol><li>Insert the USB drive and <a href="guide-how-to-boot-from-usb.html">boot from it</a>.</li><li>Choose to try the system first (live mode) or go straight to Install.</li><li>Pick your language, keyboard layout and Wi-Fi network.</li><li>Choose the install type: erase the disk and install Linux, or install alongside your current system.</li><li>Set your time zone (pick the city nearest to you), name, computer name and password.</li><li>Wait for the files to copy, then restart when asked and remove the USB drive.</li></ol>
 <h2>After installing</h2>
 <p>Run the software updater, connect your printer and check that Wi-Fi, sound and graphics work. If you want a system with an easy installer, look at {lk('800016537860','Ubuntu')}, {lk('800016421272','Linux Mint')} or {lk('800034663198','Zorin OS')}.</p>"""),
 ("how-to-dual-boot-linux-and-windows", "How to dual boot Linux and Windows",
