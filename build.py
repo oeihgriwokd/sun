@@ -4,6 +4,7 @@ Reads catalog/products.json + template/product.html, writes dist/. Python 3 stan
 Stops with a list of problems (and writes nothing) if any product is invalid."""
 import collections, hashlib, html, json, re, shutil, sys
 sys.path.insert(0, str(__import__('pathlib').Path(__file__).resolve().parent))
+import urllib.parse
 import guides_extra, guides2, guides3, faq_data
 from pathlib import Path
 from urllib.parse import urlparse
@@ -68,14 +69,18 @@ def validate(p, index, seen):
         if not is_ebay(p.get("ebayUrl")): bad("'ebayUrl' must be an https eBay URL")
 
 ABS_BASE = ""
+PROXY = "https://wsrv.nl/?url="
+FB_SCRIPT = '<script>document.addEventListener("error",function(e){var i=e.target;if(i&&i.tagName==="IMG"&&!i.dataset.fb){var m=/wsrv\\.nl\\/\\?url=([^&]+)/.exec(i.src);if(m){i.dataset.fb=1;i.src=decodeURIComponent(m[1])}}},true)</script>'
 
 def localize(u):
     """Use a self-hosted copy (img_local/<id>.jpg) when one exists, else keep the eBay URL."""
     m = re.search(r"/images/g/([^/]+)/", u)
     if m and (ROOT / "img_local" / f"{m.group(1)}.jpg").exists(): return f"img/{m.group(1)}.jpg"
+    if u.startswith("https://i.ebayimg.com/"): return PROXY + urllib.parse.quote(u, safe="")  # not blocked by tracking protection
     return u
 
 def absimg(u):
+    if u and u.startswith(PROXY): return urllib.parse.unquote(u[len(PROXY):])
     return u if not u or u.startswith("http") else (ABS_BASE + "/" + u if ABS_BASE else u)
 
 def normalise(p):
@@ -385,7 +390,7 @@ def render(template, p, site, ctx):
           f'<meta property="og:site_name" content="{esc(site["name"])}">' + (f'<meta property="og:url" content="{esc(page_url)}">' if page_url else "")
           + (f'<meta property="og:image" content="{esc(absimg(p["images"][0]["src"]))}">' if p["images"] else "") + f'<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{esc(trim(name, 70))}"><meta name="twitter:description" content="{esc(desc)}">'
           + (f'<meta name="twitter:image" content="{esc(absimg(p["images"][0]["src"]))}"><meta property="og:image:alt" content="{esc(name)}">' if p["images"] else ""))
-    pre = (('<link rel="preconnect" href="https://i.ebayimg.com">' if not p["images"] or p["images"][0]["src"].startswith("http") else "") + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
+    pre = (('<link rel="preconnect" href="https://wsrv.nl">' if not p["images"] or p["images"][0]["src"].startswith("http") else "") + (f'<link rel="preload" as="image" href="{esc(p["images"][0]["src"])}">' if p["images"] else "")
            + '<meta name="robots" content="index,follow,max-image-preview:large">')
     sections = [f'<section class="details"><h2>About {esc(name)}</h2><p>{esc(about)}</p></section>']
     if cat[0] in BOOTS:
@@ -424,7 +429,7 @@ def render(template, p, site, ctx):
         "TITLE": esc(p["title"]), "CONDITION_HTML": f'<p class="condition">Condition: {esc(p["condition"])}</p>' if p.get("condition") else "",
         "PRICE": esc(price), "EBAY_URL": esc(start["ebayUrl"] or "#"),
         "BUY_NOTE": "Opens the eBay listing in a new tab. Choose your option there to complete your purchase." if nopt else "Opens the eBay listing in a new tab, where you complete your purchase.",
-        "PAYMENTS": pay_html(False), "DATA_JSON": data_json, "ASSET_V": ASSET_V,
+        "PAYMENTS": pay_html(False), "FB_SCRIPT": FB_SCRIPT, "DATA_JSON": data_json, "ASSET_V": ASSET_V,
     }
     return re.sub(r"\{\{(\w+)\}\}", lambda m: vals[m.group(1)], template2)
 
@@ -500,6 +505,10 @@ def guides(lk):
 <ul><li>Puts the system on the computer's disk, so it starts faster and keeps your files and settings.</li><li>Can erase or change what is on the disk, so back up first.</li><li>Can sit beside Windows in a dual-boot setup, which needs careful partitioning.</li></ul>
 <p>A sensible approach is to try live mode first, then install if you like it. If you are not sure how to start, read <a href="guide-how-to-boot-from-usb.html">how to boot from a USB drive</a>.</p>"""),
     ]
+
+_page_inner = page
+def page(*a, **k):
+    return _page_inner(*a, **k).replace("</head>", FB_SCRIPT + "</head>", 1)
 
 def main():
     catalog = json.loads((ROOT / "catalog" / "products.json").read_text(encoding="utf-8"))
